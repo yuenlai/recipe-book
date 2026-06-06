@@ -12,6 +12,13 @@
           <span>首页</span>
         </router-link>
 
+        <router-link to="/meal-plan" class="nav-link" active-class="active">
+          <el-badge :value="mealPlanCount" :hidden="mealPlanCount === 0" class="badge">
+            <el-icon><Calendar /></el-icon>
+          </el-badge>
+          <span>备餐</span>
+        </router-link>
+
         <router-link to="/favorites" class="nav-link" active-class="active">
           <el-badge :value="favoriteCount" :hidden="favoriteCount === 0" class="badge">
             <el-icon><StarFilled /></el-icon>
@@ -43,6 +50,9 @@ const store = useRecipeStore()
 
 const favoriteCount = computed(() => store.favoriteCount)
 const timerCount = computed(() => store.activeTimers.length)
+const mealPlanCount = computed(() => {
+  return store.weekPlanSummary.reduce((sum, day) => sum + day.mealCount, 0)
+})
 </script>
 
 <style scoped>

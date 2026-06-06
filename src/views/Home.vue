@@ -5,6 +5,68 @@
       <p>发现美味，享受烹饪的乐趣</p>
     </div>
 
+    <div v-if="hasMealsPlanned" class="week-plan-preview">
+      <div class="preview-header">
+        <div class="preview-title">
+          <el-icon><Calendar /></el-icon>
+          <span>本周备餐安排</span>
+        </div>
+        <router-link to="/meal-plan" class="view-all-link">
+          查看详情
+          <el-icon><ArrowRight /></el-icon>
+        </router-link>
+      </div>
+      <div class="week-mini-cards">
+        <div
+          v-for="day in weekPlanSummary"
+          :key="day.key"
+          class="mini-day-card"
+          :class="{ 'is-today': day.isToday, 'has-meals': day.mealCount > 0 }"
+        >
+          <div class="mini-day-label">{{ day.label }}</div>
+          <div class="mini-day-date">{{ day.date }}</div>
+          <div class="mini-meals-indicator">
+            <span
+              class="meal-dot"
+              :class="{ active: day.breakfastCount > 0 }"
+              title="早餐"
+            >早</span>
+            <span
+              class="meal-dot"
+              :class="{ active: day.lunchCount > 0 }"
+              title="午餐"
+            >午</span>
+            <span
+              class="meal-dot"
+              :class="{ active: day.dinnerCount > 0 }"
+              title="晚餐"
+            >晚</span>
+          </div>
+          <div v-if="day.totalTime > 0" class="mini-time">
+            <el-icon><Timer /></el-icon>
+            {{ day.totalTime }}分钟
+          </div>
+          <div v-else class="mini-empty">未安排</div>
+        </div>
+      </div>
+      <div class="preview-footer">
+        <span class="total-meals">本周共安排 {{ totalMealsPlanned }} 道菜</span>
+        <span class="total-time">总耗时 {{ totalWeekTime }} 分钟</span>
+      </div>
+    </div>
+
+    <div v-else class="week-plan-empty" @click="goToMealPlan">
+      <div class="empty-icon">📅</div>
+      <div class="empty-text">
+        <h4>还没有备餐计划</h4>
+        <p>点击这里开始规划本周饮食</p>
+      </div>
+      <el-button type="primary" size="small">
+        <el-icon><Plus /></el-icon>
+        开始规划
+      </el-button>
+    </div>
+
     <CategoryFilter />
 
     <div v-if="filteredRecipes.length === 0" class="empty-state">
@@ -36,11 +98,13 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useRecipeStore } from '../stores/recipe'
 import CategoryFilter from '../components/CategoryFilter.vue'
 import RecipeCard from '../components/RecipeCard.vue'
 
 const store = useRecipeStore()
+const router = useRouter()
 
 const filteredRecipes = computed(() => store.filteredRecipes)
 const paginatedRecipes = computed(() => store.paginatedRecipes)
@@ -50,9 +114,27 @@ const currentPage = computed({
   set: () => {}
 })
 
+const weekPlanSummary = computed(() => store.weekPlanSummary)
+
+const hasMealsPlanned = computed(() => {
+  return weekPlanSummary.value.some(day => day.mealCount > 0)
+})
+
+const totalMealsPlanned = computed(() => {
+  return weekPlanSummary.value.reduce((sum, day) => sum + day.mealCount, 0)
+})
+
+const totalWeekTime = computed(() => {
+  return weekPlanSummary.value.reduce((sum, day) => sum + day.totalTime, 0)
+})
+
 function handlePageChange(page) {
   store.setPage(page)
   window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function goToMealPlan() {
+  router.push('/meal-plan')
 }
 </script>
 
@@ -78,6 +160,176 @@ function handlePageChange(page) {
   font-size: 16px;
 }
 
+.week-plan-preview {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.preview-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #3D3D3D;
+}
+
+.view-all-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #FF6B35;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.view-all-link:hover {
+  color: #E55A2B;
+}
+
+.week-mini-cards {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mini-day-card {
+  text-align: center;
+  padding: 12px 8px;
+  border-radius: 10px;
+  background: #FAFAFA;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.mini-day-card.has-meals {
+  background: linear-gradient(135deg, #FFFBF8, #FFF0E8);
+  border-color: #FFE4D6;
+}
+
+.mini-day-card.is-today {
+  border-color: #FF6B35;
+  background: linear-gradient(135deg, #FFFBF8, #FFE4D6);
+}
+
+.mini-day-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3D3D3D;
+  margin-bottom: 2px;
+}
+
+.mini-day-date {
+  font-size: 11px;
+  color: #757575;
+  margin-bottom: 8px;
+}
+
+.mini-meals-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.meal-dot {
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #F0F0F0;
+  color: #BDBDBD;
+  font-weight: 500;
+}
+
+.meal-dot.active {
+  background: #FF6B35;
+  color: white;
+}
+
+.mini-time {
+  font-size: 11px;
+  color: #FF6B35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-weight: 600;
+}
+
+.mini-empty {
+  font-size: 11px;
+  color: #BDBDBD;
+}
+
+.preview-footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid #F0F0F0;
+  font-size: 13px;
+  color: #757575;
+}
+
+.total-meals, .total-time {
+  font-weight: 500;
+}
+
+.total-time {
+  color: #FF6B35;
+}
+
+.week-plan-empty {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px dashed transparent;
+}
+
+.week-plan-empty:hover {
+  border-color: #FF6B35;
+  background: #FFFBF8;
+}
+
+.empty-icon {
+  font-size: 40px;
+  flex-shrink: 0;
+}
+
+.empty-text {
+  flex: 1;
+}
+
+.empty-text h4 {
+  font-size: 16px;
+  color: #3D3D3D;
+  margin: 0 0 4px 0;
+}
+
+.empty-text p {
+  font-size: 13px;
+  color: #757575;
+  margin: 0;
+}
+
 .recipe-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -99,6 +351,10 @@ function handlePageChange(page) {
   .recipe-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .week-mini-cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 @media (max-width: 600px) {
@@ -108,6 +364,21 @@ function handlePageChange(page) {
 
   .page-header h1 {
     font-size: 24px;
+  }
+
+  .week-mini-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .week-plan-empty {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .preview-footer {
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
   }
 }
 </style>
