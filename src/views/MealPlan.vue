@@ -6,6 +6,10 @@
         <p>把食谱拖到每天的早午晚餐，轻松规划一周饮食</p>
       </div>
       <div class="header-actions">
+        <el-button type="success" @click="handleGenerateShoppingList">
+          <el-icon><ShoppingCart /></el-icon>
+          生成购物清单
+        </el-button>
         <el-button type="danger" plain @click="handleClearWeek">
           <el-icon><Delete /></el-icon>
           清空本周
@@ -178,6 +182,10 @@
         </div>
 
         <div class="summary-actions">
+          <el-button type="success" @click="handleGenerateDayShoppingList(selectedDay.key)">
+            <el-icon><ShoppingCart /></el-icon>
+            生成当天购物清单
+          </el-button>
           <el-button type="danger" plain @click="handleClearDay(selectedDay.key)">
             <el-icon><Delete /></el-icon>
             清空当天
@@ -221,7 +229,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import { useRecipeStore } from '../stores/recipe'
 import { categories } from '../data/recipes'
 
@@ -359,6 +367,81 @@ function toggleDaySummary(day) {
 
 function goToRecipe(recipeId) {
   router.push(`/recipe/${recipeId}`)
+}
+
+function handleGenerateDayShoppingList(dateKey) {
+  const dayPlan = store.mealPlan[dateKey]
+  const recipeIds = new Set()
+  
+  if (dayPlan) {
+    ['breakfast', 'lunch', 'dinner'].forEach(mealType => {
+      if (dayPlan[mealType]) {
+        dayPlan[mealType].forEach(id => recipeIds.add(id))
+      }
+    })
+  }
+  
+  if (recipeIds.size === 0) {
+    ElMessage.warning('当天还没有安排食谱')
+    return
+  }
+  
+  ElMessageBox.confirm(
+    `检测到当天有 ${recipeIds.size} 道菜，是否导入到购物清单？`,
+    '生成当天购物清单',
+    {
+      confirmButtonText: '导入并跳转',
+      cancelButtonText: '仅导入',
+      distinguishCancelAndClose: true,
+      type: 'info'
+    }
+  ).then(() => {
+    store.addMealPlanToShoppingList([dateKey])
+    router.push('/shopping-list')
+  }).catch(action => {
+    if (action === 'cancel') {
+      store.addMealPlanToShoppingList([dateKey])
+      ElMessage.success(`已导入 ${recipeIds.size} 道菜到购物清单`)
+    }
+  })
+}
+
+function handleGenerateShoppingList() {
+  const recipeIds = new Set()
+  
+  Object.values(store.mealPlan).forEach(dayPlan => {
+    if (dayPlan) {
+      ['breakfast', 'lunch', 'dinner'].forEach(mealType => {
+        if (dayPlan[mealType]) {
+          dayPlan[mealType].forEach(id => recipeIds.add(id))
+        }
+      })
+    }
+  })
+  
+  if (recipeIds.size === 0) {
+    ElMessage.warning('备餐计划中还没有食谱，请先添加食谱')
+    return
+  }
+  
+  ElMessageBox.confirm(
+    `检测到本周备餐计划中有 ${recipeIds.size} 道菜，是否导入到购物清单？`,
+    '生成购物清单',
+    {
+      confirmButtonText: '导入并跳转',
+      cancelButtonText: '仅导入',
+      distinguishCancelAndClose: true,
+      type: 'info'
+    }
+  ).then(() => {
+    store.addMealPlanToShoppingList()
+    router.push('/shopping-list')
+  }).catch(action => {
+    if (action === 'cancel') {
+      store.addMealPlanToShoppingList()
+      ElMessage.success(`已导入 ${recipeIds.size} 道菜到购物清单`)
+    }
+  })
 }
 </script>
 

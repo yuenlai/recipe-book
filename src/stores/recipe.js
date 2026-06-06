@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { recipes as allRecipes } from '../data/recipes'
+import { getCategory, parseAmount, formatAmount, categoryOrder, categoryEmojis } from '../data/ingredientCategories'
 
 const DAYS_OF_WEEK = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner']
@@ -46,6 +47,8 @@ export const useRecipeStore = defineStore('recipe', () => {
   const pageSize = 9
   const weekDates = ref(getWeekDates())
   const mealPlan = ref(JSON.parse(localStorage.getItem('mealPlan') || 'null') || initializeMealPlan())
+  const shoppingListSelectedRecipes = ref(JSON.parse(localStorage.getItem('shoppingListSelectedRecipes') || '[]'))
+  const shoppingListCheckedItems = ref(JSON.parse(localStorage.getItem('shoppingListCheckedItems') || '{}'))
 
   const filteredRecipes = computed(() => {
     let result = recipes.value
@@ -272,6 +275,201 @@ export const useRecipeStore = defineStore('recipe', () => {
     }
   }
 
+  const shoppingListSelectedRecipeObjects = computed(() => {
+    return shoppingListSelectedRecipes.value
+      .map(id => recipes.value.find(r => r.id === id))
+      .filter(Boolean)
+  })
+
+  const mergedIngredients = computed(() => {
+    const ingredientMap = {}
+    
+    shoppingListSelectedRecipeObjects.value.forEach(recipe => {
+      recipe.ingredients.forEach(ing => {
+        const key = ing.name
+        const parsed = parseAmount(ing.amount)
+        
+        if (!ingredientMap[key]) {
+          ingredientMap[key] = {
+            name: ing.name,
+            totalValue: parsed.value,
+            unit: parsed.unit,
+            category: getCategory(ing.name),
+            checked: shoppingListCheckedItems.value[key] || false,
+            notes: [],
+            fromRecipes: []
+          }
+        } else {
+          if (parsed.value !== null && ingredientMap[key].totalValue !== null) {
+            if (parsed.unit === ingredientMap[key].unit) {
+              ingredientMap[key].totalValue += parsed.value
+            } else {
+              ingredientMap[key].totalValue = null
+              ingredientMap[key].unit = '请参考各食谱用量'
+            }
+          } else {
+            ingredientMap[key].totalValue = null
+            if (ingredientMap[key].unit !== '请参考各食谱用量') {
+              ingredientMap[key].unit = ingredientMap[key].unit || parsed.unit
+            }
+          }
+        }
+        
+        if (ing.note && !ingredientMap[key].notes.includes(ing.note)) {
+          ingredientMap[key].notes.push(ing.note)
+        }
+        if (!ingredientMap[key].fromRecipes.includes(recipe.name)) {
+          ingredientMap[key].fromRecipes.push(recipe.name)
+        }
+      })
+    })
+    
+    return Object.values(ingredientMap)
+  })
+
+  const groupedIngredients = computed(() => {
+    const groups = {}
+    
+    categoryOrder.forEach(cat => {
+      groups[cat] = []
+    })
+    
+    mergedIngredients.value.forEach(ing => {
+      if (!groups[ing.category]) {
+        groups[ing.category] = []
+      }
+      groups[ing.category].push({
+        ...ing,
+        displayAmount: formatAmount(ing.totalValue, ing.unit)
+      })
+    })
+    
+    const result = []
+    categoryOrder.forEach(cat => {
+      if (groups[cat] && groups[cat].length > 0) {
+        result.push({
+          category: cat,
+          emoji: categoryEmojis[cat] || '📦',
+          items: groups[cat].sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+        })
+      }
+    })
+    
+    Object.keys(groups).forEach(cat => {
+      if (!categoryOrder.includes(cat) && groups[cat].length > 0) {
+        result.push({
+          category: cat,
+          emoji: categoryEmojis[cat] || '📦',
+          items: groups[cat].sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+        })
+      }
+    })
+    
+    return result
+  })
+
+  const shoppingListStats = computed(() => {
+    const total = mergedIngredients.value.length
+    const checked = mergedIngredients.value.filter(ing => shoppingListCheckedItems.value[ing.name]).length
+    return {
+      totalRecipes: shoppingListSelectedRecipeObjects.value.length,
+      totalItems: total,
+      checkedItems: checked,
+      progress: total > 0 ? Math.round((checked / total) * 100) : 0
+    }
+  })
+
+  function toggleRecipeForShoppingList(recipeId) {
+    const index = shoppingListSelectedRecipes.value.indexOf(recipeId)
+    if (index === -1) {
+      shoppingListSelectedRecipes.value.push(recipeId)
+    } else {
+      shoppingListSelectedRecipes.value.splice(index, 1)
+    }
+    saveShoppingListSelection()
+  }
+
+  function addRecipesToShoppingList(recipeIds) {
+    recipeIds.forEach(id => {
+      if (!shoppingListSelectedRecipes.value.includes(id)) {
+        shoppingListSelectedRecipes.value.push(id)
+      }
+    })
+    saveShoppingListSelection()
+  }
+
+  function removeRecipeFromShoppingList(recipeId) {
+    const index = shoppingListSelectedRecipes.value.indexOf(recipeId)
+    if (index > -1) {
+      shoppingListSelectedRecipes.value.splice(index, 1)
+    }
+    saveShoppingListSelection()
+  }
+
+  function clearShoppingListRecipes() {
+    shoppingListSelectedRecipes.value = []
+    shoppingListCheckedItems.value = {}
+    saveShoppingListSelection()
+    saveShoppingListCheckedItems()
+  }
+
+  function toggleIngredientChecked(ingredientName) {
+    shoppingListCheckedItems.value[ingredientName] = !shoppingListCheckedItems.value[ingredientName]
+    saveShoppingListCheckedItems()
+  }
+
+  function setIngredientChecked(ingredientName, checked) {
+    shoppingListCheckedItems.value[ingredientName] = checked
+    saveShoppingListCheckedItems()
+  }
+
+  function checkAllIngredients() {
+    mergedIngredients.value.forEach(ing => {
+      shoppingListCheckedItems.value[ing.name] = true
+    })
+    saveShoppingListCheckedItems()
+  }
+
+  function uncheckAllIngredients() {
+    shoppingListCheckedItems.value = {}
+    saveShoppingListCheckedItems()
+  }
+
+  function isRecipeSelectedForShopping(recipeId) {
+    return shoppingListSelectedRecipes.value.includes(recipeId)
+  }
+
+  function isIngredientChecked(ingredientName) {
+    return shoppingListCheckedItems.value[ingredientName] || false
+  }
+
+  function saveShoppingListSelection() {
+    localStorage.setItem('shoppingListSelectedRecipes', JSON.stringify(shoppingListSelectedRecipes.value))
+  }
+
+  function saveShoppingListCheckedItems() {
+    localStorage.setItem('shoppingListCheckedItems', JSON.stringify(shoppingListCheckedItems.value))
+  }
+
+  function addMealPlanToShoppingList(dateKeys = []) {
+    const recipeIds = new Set()
+    
+    const datesToProcess = dateKeys.length > 0 ? dateKeys : Object.keys(mealPlan.value)
+    
+    datesToProcess.forEach(dateKey => {
+      const dayPlan = mealPlan.value[dateKey]
+      if (dayPlan) {
+        MEAL_TYPES.forEach(mealType => {
+          if (dayPlan[mealType]) {
+            dayPlan[mealType].forEach(id => recipeIds.add(id))
+          }
+        })
+      }
+    })
+    
+    addRecipesToShoppingList(Array.from(recipeIds))
+  }
+
   return {
     recipes,
     favorites,
@@ -290,6 +488,12 @@ export const useRecipeStore = defineStore('recipe', () => {
     favoriteRecipes,
     favoriteCount,
     activeTimers,
+    shoppingListSelectedRecipes,
+    shoppingListSelectedRecipeObjects,
+    mergedIngredients,
+    groupedIngredients,
+    shoppingListStats,
+    shoppingListCheckedItems,
     toggleFavorite,
     isFavorite,
     getRecipeById,
@@ -307,6 +511,17 @@ export const useRecipeStore = defineStore('recipe', () => {
     moveRecipe,
     clearDayPlan,
     clearWeekPlan,
-    isRecipeInPlan
+    isRecipeInPlan,
+    toggleRecipeForShoppingList,
+    addRecipesToShoppingList,
+    removeRecipeFromShoppingList,
+    clearShoppingListRecipes,
+    toggleIngredientChecked,
+    setIngredientChecked,
+    checkAllIngredients,
+    uncheckAllIngredients,
+    isRecipeSelectedForShopping,
+    isIngredientChecked,
+    addMealPlanToShoppingList
   }
 })

@@ -19,6 +19,13 @@
           <span>备餐</span>
         </router-link>
 
+        <router-link to="/shopping-list" class="nav-link" active-class="active">
+          <el-badge :value="shoppingListCount" :hidden="shoppingListCount === 0" class="badge">
+            <el-icon><ShoppingCart /></el-icon>
+          </el-badge>
+          <span>购物清单</span>
+        </router-link>
+
         <router-link to="/favorites" class="nav-link" active-class="active">
           <el-badge :value="favoriteCount" :hidden="favoriteCount === 0" class="badge">
             <el-icon><StarFilled /></el-icon>
@@ -52,6 +59,9 @@ const favoriteCount = computed(() => store.favoriteCount)
 const timerCount = computed(() => store.activeTimers.length)
 const mealPlanCount = computed(() => {
   return store.weekPlanSummary.reduce((sum, day) => sum + day.mealCount, 0)
+})
+const shoppingListCount = computed(() => {
+  return store.shoppingListStats.totalItems > 0 ? store.shoppingListStats.totalItems : 0
 })
 </script>
 
