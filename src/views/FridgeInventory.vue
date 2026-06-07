@@ -228,13 +228,14 @@
             </el-select>
           </div>
         </el-form-item>
-        <el-form-item label="购入日期">
+        <el-form-item label="购入日期" prop="purchaseDate">
           <el-date-picker
             v-model="formData.purchaseDate"
             type="date"
             placeholder="选择购入日期"
             style="width: 100%"
             value-format="YYYY-MM-DD"
+            @change="onPurchaseDateChange"
           />
         </el-form-item>
         <el-form-item label="保质期" prop="expiryDate">
@@ -294,8 +295,33 @@ const formData = ref({
 
 const formRules = {
   name: [{ required: true, message: '请输入食材名称', trigger: 'blur' }],
-  quantity: [{ required: true, message: '请输入数量', trigger: 'blur' }],
-  expiryDate: [{ required: true, message: '请选择保质期', trigger: 'change' }]
+  quantity: [{ required: true, message: '请输入数量', trigger: 'change' }],
+  purchaseDate: [{ required: true, message: '请选择购入日期', trigger: 'change' }],
+  expiryDate: [
+    { required: true, message: '请选择保质期', trigger: 'change' },
+    {
+      validator: (rule, value, callback) => {
+        if (!value || !formData.value.purchaseDate) {
+          callback()
+          return
+        }
+        const purchaseDate = new Date(formData.value.purchaseDate)
+        const expiryDate = new Date(value)
+        purchaseDate.setHours(0, 0, 0, 0)
+        expiryDate.setHours(0, 0, 0, 0)
+        if (expiryDate < purchaseDate) {
+          callback(new Error('保质期必须晚于或等于购入日期'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change'
+    }
+  ]
+}
+
+function onPurchaseDateChange() {
+  formRef.value?.validateField('expiryDate')
 }
 
 function formatDate(dateStr) {
@@ -362,8 +388,6 @@ async function handleSubmit() {
     const isEditing = !!editingItem.value
     const editingId = editingItem.value?.id
 
-    showAddDialog.value = false
-    
     if (isEditing) {
       store.updateFridgeItem(editingId, formCopy)
       ElMessage.success('修改成功')
@@ -372,10 +396,16 @@ async function handleSubmit() {
       ElMessage.success('添加成功')
     }
     
+    showAddDialog.value = false
+    await nextTick()
     resetForm()
   } catch (error) {
     console.error('Form validation error:', error)
-    ElMessage.error('请填写完整信息')
+    if (error && typeof error === 'object' && error.fields) {
+      ElMessage.error('请检查表单填写内容')
+    } else {
+      ElMessage.error('请填写完整信息')
+    }
   }
 }
 
