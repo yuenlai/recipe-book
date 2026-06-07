@@ -1,5 +1,9 @@
 <template>
-  <div class="recipe-card" @click="goToDetail">
+  <div
+    class="recipe-card"
+    :class="{ 'in-compare': isInCompare(recipe.id) }"
+    @click="goToDetail"
+  >
     <div class="card-cover" :style="{ backgroundColor: recipe.coverColor }">
       <span class="card-emoji">{{ recipe.emoji }}</span>
       <FavoriteButton :recipeId="recipe.id" class="card-favorite" @click.stop />
@@ -16,7 +20,11 @@
         <el-icon><DataLine /></el-icon>
       </el-button>
       <div v-if="isInCompare(recipe.id)" class="compare-indicator">
-        <span>已对比</span>
+        <el-icon><Check /></el-icon>
+        <span>对比中</span>
+      </div>
+      <div v-if="isInCompare(recipe.id)" class="compare-overlay">
+        <span>已加入对比列表</span>
       </div>
     </div>
 
@@ -55,7 +63,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useRecipeStore } from '../stores/recipe'
 import FavoriteButton from './FavoriteButton.vue'
-import { DataLine } from '@element-plus/icons-vue'
+import { DataLine, Check } from '@element-plus/icons-vue'
 
 const props = defineProps({
   recipe: {
@@ -106,11 +114,22 @@ function toggleCompare() {
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 3px solid transparent;
 }
 
 .recipe-card:hover {
   transform: translateY(-6px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+.recipe-card.in-compare {
+  border-color: #E6A23C;
+  box-shadow: 0 4px 20px rgba(230, 162, 60, 0.3);
+}
+
+.recipe-card.in-compare:hover {
+  box-shadow: 0 8px 30px rgba(230, 162, 60, 0.4);
+  transform: translateY(-6px) scale(1.02);
 }
 
 .card-cover {
@@ -153,23 +172,63 @@ function toggleCompare() {
   position: absolute;
   bottom: 8px;
   left: 8px;
-  background: rgba(255, 152, 0, 0.95);
+  background: linear-gradient(135deg, #E6A23C 0%, #F56C6C 100%);
   color: white;
-  padding: 4px 10px;
-  border-radius: 12px;
+  padding: 6px 12px;
+  border-radius: 16px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   animation: pulse 2s infinite;
-  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(230, 162, 60, 0.5);
+  z-index: 2;
+}
+
+.compare-indicator .el-icon {
+  font-size: 14px;
 }
 
 @keyframes pulse {
   0%, 100% {
-    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(230, 162, 60, 0.5);
   }
   50% {
-    opacity: 0.8;
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(230, 162, 60, 0.7);
   }
+}
+
+.compare-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(230, 162, 60, 0.1) 0%,
+    rgba(245, 108, 108, 0.1) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.compare-overlay span {
+  background: rgba(230, 162, 60, 0.9);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  transform: rotate(-15deg);
+  border: 2px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .card-body {

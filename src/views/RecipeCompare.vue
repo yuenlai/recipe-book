@@ -13,15 +13,39 @@
     </div>
 
     <div v-else class="compare-content">
-      <div class="compare-actions">
-        <el-button @click="clearCompare" type="danger" plain>
-          <el-icon><Delete /></el-icon>
-          清空对比
-        </el-button>
-        <el-button type="primary" @click="goHome">
-          <el-icon><Plus /></el-icon>
-          继续添加
-        </el-button>
+      <div class="compare-actions-bar">
+        <div class="compare-summary-cards">
+          <div
+            v-for="(recipe, index) in compareRecipeObjects"
+            :key="recipe.id"
+            class="summary-card"
+            :style="{ '--card-color': recipe.coverColor }"
+          >
+            <span class="card-index">{{ index + 1 }}</span>
+            <span class="card-emoji">{{ recipe.emoji }}</span>
+            <span class="card-name">{{ recipe.name }}</span>
+            <el-button
+              class="card-remove"
+              circle
+              size="small"
+              type="danger"
+              plain
+              @click="removeRecipe(recipe.id)"
+            >
+              <el-icon><Close /></el-icon>
+            </el-button>
+          </div>
+        </div>
+        <div class="compare-actions">
+          <el-button @click="clearCompare" type="danger" plain>
+            <el-icon><Delete /></el-icon>
+            清空对比
+          </el-button>
+          <el-button type="primary" @click="goHome">
+            <el-icon><Plus /></el-icon>
+            继续添加
+          </el-button>
+        </div>
       </div>
 
       <div class="compare-table-wrapper">
@@ -346,11 +370,78 @@ function startCooking(recipeId) {
   margin: 0 auto;
 }
 
+.compare-actions-bar {
+  margin-bottom: 24px;
+}
+
+.compare-summary-cards {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 8px 4px 16px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, var(--card-color) 0%, rgba(255,255,255,0.9) 100%);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: relative;
+  transition: all 0.3s ease;
+  border: 2px solid white;
+}
+
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.card-index {
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #333;
+}
+
+.card-emoji {
+  font-size: 28px;
+}
+
+.card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  margin-right: 24px;
+}
+
+.card-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: white !important;
+  transition: all 0.2s ease;
+}
+
+.card-remove:hover {
+  transform: scale(1.1);
+}
+
 .compare-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-bottom: 20px;
 }
 
 .compare-table-wrapper {
@@ -370,9 +461,10 @@ function startCooking(recipeId) {
 
 .compare-table th,
 .compare-table td {
-  padding: 20px;
+  padding: 24px 20px;
   text-align: center;
   border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
 }
 
 .compare-table thead th {
@@ -382,11 +474,12 @@ function startCooking(recipeId) {
 }
 
 .compare-label-col {
-  width: 140px;
+  width: 160px;
   position: sticky;
   left: 0;
-  background: #fafafa;
+  background: linear-gradient(135deg, #fff5f0 0%, #fef8f0 100%);
   z-index: 1;
+  border-right: 2px solid #ffe4d6;
 }
 
 .compare-recipe-col {
@@ -424,11 +517,21 @@ function startCooking(recipeId) {
 }
 
 .compare-row:nth-child(even) td:not(.compare-label-col) {
-  background: #fefcf9;
+  background: #fffbf7;
 }
 
 .compare-row.highlight td:not(.compare-label-col) {
-  background: #f0f9eb;
+  background: linear-gradient(135deg, #f0f9eb 0%, #e8f5e0 100%);
+}
+
+.compare-row.ingredients-row td:not(.compare-label-col) {
+  background: linear-gradient(135deg, #fff9f5 0%, #fff3ed 100%);
+}
+
+.compare-row td.compare-label-col {
+  font-weight: 700;
+  font-size: 15px;
+  background: linear-gradient(135deg, #fff5f0 0%, #fef0e8 100%);
 }
 
 .compare-label {
@@ -473,13 +576,16 @@ function startCooking(recipeId) {
 }
 
 .tags-container .el-tag {
-  font-weight: 500;
-  padding: 4px 10px;
+  font-weight: 600;
+  padding: 6px 14px;
   transition: all 0.2s ease;
+  font-size: 13px;
+  border-width: 2px;
 }
 
 .tags-container .el-tag:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .ingredients-list {

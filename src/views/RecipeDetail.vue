@@ -62,39 +62,79 @@
       <StepList :steps="recipe.steps" />
 
       <div class="detail-extra-actions">
-        <div class="compare-info" v-if="compareCount > 0">
-          <span class="compare-count-label">已选 {{ compareCount }}/6 道菜</span>
-          <div class="compare-recipe-previews">
-            <span
-              v-for="r in compareRecipeObjects"
-              :key="r.id"
-              class="recipe-preview"
-              :style="{ backgroundColor: r.coverColor }"
-              :title="r.name"
-            >
-              {{ r.emoji }}
+        <div class="compare-info-section" v-if="compareCount > 0">
+          <div class="compare-info-header">
+            <span class="compare-count-label">
+              <el-icon><DataLine /></el-icon>
+              已选 {{ compareCount }}/6 道菜进行对比
             </span>
           </div>
+          <div class="compare-recipe-list">
+            <div
+              v-for="r in compareRecipeObjects"
+              :key="r.id"
+              class="compare-recipe-item"
+              :class="{ 'is-current': r.id === recipe.id }"
+            >
+              <span
+                class="recipe-avatar"
+                :style="{ backgroundColor: r.coverColor }"
+              >
+                {{ r.emoji }}
+              </span>
+              <div class="recipe-info">
+                <span class="recipe-name">{{ r.name }}</span>
+                <span class="recipe-meta">
+                  {{ r.difficulty }} · {{ r.prepTime + r.cookTime }}分钟
+                </span>
+              </div>
+              <el-tag
+                v-if="r.id === recipe.id"
+                type="warning"
+                size="small"
+                effect="dark"
+              >当前</el-tag>
+              <el-button
+                circle
+                size="small"
+                type="danger"
+                plain
+                @click.stop="removeFromCompare(r.id)"
+                class="remove-single-btn"
+              >
+                <el-icon><Close /></el-icon>
+              </el-button>
+            </div>
+          </div>
         </div>
-        <el-button
-          :type="isInCompare(recipe.id) ? 'warning' : 'info'"
-          size="large"
-          @click="toggleCompare"
-          :disabled="!isInCompare(recipe.id) && compareCount >= 6"
-          class="compare-main-btn"
-        >
-          <el-icon><DataLine /></el-icon>
-          {{ isInCompare(recipe.id) ? '✓ 已加入对比' : '＋ 加入对比' }}
-        </el-button>
-        <el-button
-          type="primary"
-          size="large"
-          @click="goToCompare"
-          v-if="compareCount > 0"
-        >
-          <el-icon><DataLine /></el-icon>
-          查看对比结果
-        </el-button>
+        <div class="compare-info-empty" v-else>
+          <span class="empty-hint">
+            <el-icon><DataLine /></el-icon>
+            还没有选择对比的食谱，点击下方按钮开始对比
+          </span>
+        </div>
+        <div class="compare-buttons">
+          <el-button
+            :type="isInCompare(recipe.id) ? 'warning' : 'info'"
+            size="large"
+            @click="toggleCompare"
+            :disabled="!isInCompare(recipe.id) && compareCount >= 6"
+            class="compare-main-btn"
+          >
+            <el-icon><component :is="isInCompare(recipe.id) ? 'Check' : 'Plus'" /></el-icon>
+            {{ isInCompare(recipe.id) ? '✓ 已加入对比' : '＋ 加入对比' }}
+          </el-button>
+          <el-button
+            type="primary"
+            size="large"
+            @click="goToCompare"
+            v-if="compareCount > 0"
+            class="view-compare-btn"
+          >
+            <el-icon><DataLine /></el-icon>
+            查看对比结果 ({{ compareCount }})
+          </el-button>
+        </div>
       </div>
 
       <div class="timer-action">
@@ -125,7 +165,7 @@ import { useRecipeStore } from '../stores/recipe'
 import FavoriteButton from '../components/FavoriteButton.vue'
 import IngredientList from '../components/IngredientList.vue'
 import StepList from '../components/StepList.vue'
-import { DataLine } from '@element-plus/icons-vue'
+import { DataLine, Check, Plus, Close } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -187,6 +227,11 @@ function toggleCompare() {
 
 function goToCompare() {
   router.push('/compare')
+}
+
+function removeFromCompare(recipeId) {
+  store.removeFromCompare(recipeId)
+  ElMessage.success('已从对比中移除')
 }
 </script>
 
@@ -295,50 +340,136 @@ function goToCompare() {
 .detail-extra-actions {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 16px;
-  padding: 24px 0;
+  padding: 24px;
   border-top: 1px solid #F0F0F0;
   margin-top: 24px;
   background: linear-gradient(180deg, #FFFDFB 0%, #FFFFFF 100%);
   border-radius: 16px;
 }
 
-.compare-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+.compare-info-section {
   width: 100%;
 }
 
+.compare-info-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
 .compare-count-label {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
-}
-
-.compare-recipe-previews {
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
-.recipe-preview {
-  width: 36px;
-  height: 36px;
+.compare-count-label .el-icon {
+  color: #FF6B35;
+}
+
+.compare-recipe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #FAFAFA;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.compare-recipe-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: white;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.compare-recipe-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.compare-recipe-item.is-current {
+  border-color: #E6A23C;
+  background: linear-gradient(135deg, #FFF8E7 0%, #FFFFFF 100%);
+}
+
+.recipe-avatar {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease;
+  font-size: 24px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.recipe-preview:hover {
-  transform: scale(1.15);
+.recipe-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.recipe-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recipe-meta {
+  font-size: 12px;
+  color: #999;
+}
+
+.remove-single-btn {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.compare-recipe-item:hover .remove-single-btn {
+  opacity: 1;
+}
+
+.compare-info-empty {
+  text-align: center;
+  padding: 16px;
+  background: #F5F5F5;
+  border-radius: 12px;
+}
+
+.empty-hint {
+  color: #999;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.empty-hint .el-icon {
+  color: #ccc;
+}
+
+.compare-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .compare-main-btn {
@@ -355,6 +486,17 @@ function goToCompare() {
 .compare-main-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.view-compare-btn {
+  min-width: 200px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.view-compare-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
 }
 
 .timer-action {
