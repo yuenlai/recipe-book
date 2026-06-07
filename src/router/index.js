@@ -9,6 +9,7 @@ import CookingMode from '../views/CookingMode.vue'
 import DinnerParty from '../views/DinnerParty.vue'
 import FridgeInventory from '../views/FridgeInventory.vue'
 import HolidayMenus from '../views/HolidayMenus.vue'
+import TrainingCamp from '../views/TrainingCamp.vue'
 
 const routes = [
   {
@@ -62,6 +63,11 @@ const routes = [
     path: '/holiday-menus',
     name: 'HolidayMenus',
     component: HolidayMenus
+  },
+  {
+    path: '/training-camp',
+    name: 'TrainingCamp',
+    component: TrainingCamp
   }
 ]
 

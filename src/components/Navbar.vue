@@ -29,6 +29,11 @@
           <span>节日</span>
         </router-link>
 
+        <router-link to="/training-camp" class="nav-link" active-class="active">
+          <el-icon><Guide /></el-icon>
+          <span>训练营</span>
+        </router-link>
+
         <router-link to="/shopping-list" class="nav-link" active-class="active">
           <el-badge :value="shoppingListCount" :hidden="shoppingListCount === 0" class="badge">
             <el-icon><ShoppingCart /></el-icon>

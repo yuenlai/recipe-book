@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { recipes as allRecipes, rawRecipes } from '../data/recipes'
 import { getCategory, parseAmount, formatAmount, categoryOrder, categoryEmojis } from '../data/ingredientCategories'
 import { HOLIDAY_MENUS, HOLIDAY_TYPES } from '../data/holidayMenus'
+import { TRAINING_STAGES, SKILLS, ACHIEVEMENTS } from '../data/trainingCamp'
 
 const TASTE_PREFERENCES = [
   { value: 'all', label: '不限口味', emoji: '🍽️' },
@@ -117,6 +118,10 @@ export const useRecipeStore = defineStore('recipe', () => {
   const dinnerPartyTaste = ref('all')
   const dinnerPartyPlan = ref(JSON.parse(localStorage.getItem('dinnerPartyPlan') || 'null'))
   const dinnerPartyHistory = ref(JSON.parse(localStorage.getItem('dinnerPartyHistory') || '[]'))
+
+  const trainingCompletedTasks = ref(JSON.parse(localStorage.getItem('trainingCompletedTasks') || '[]'))
+  const trainingCompletedAt = ref(JSON.parse(localStorage.getItem('trainingCompletedAt') || '{}'))
+  const trainingUnlockedAchievements = ref(JSON.parse(localStorage.getItem('trainingUnlockedAchievements') || '[]'))
 
   const filteredRecipes = computed(() => {
     let result = recipes.value
@@ -1150,6 +1155,143 @@ export const useRecipeStore = defineStore('recipe', () => {
     }
   }
 
+  const trainingStages = computed(() => TRAINING_STAGES)
+  const skills = computed(() => SKILLS)
+  const achievements = computed(() => ACHIEVEMENTS)
+
+  const trainingStats = computed(() => {
+    const completedTaskIds = trainingCompletedTasks.value
+    const completedTaskSet = new Set(completedTaskIds)
+    
+    const completedStages = TRAINING_STAGES.filter(stage => 
+      stage.tasks.every(task => completedTaskSet.has(task.id))
+    ).map(s => s.id)
+
+    const unlockedSkillIds = new Set()
+    TRAINING_STAGES.forEach(stage => {
+      stage.tasks.forEach(task => {
+        if (completedTaskSet.has(task.id)) {
+          task.skills.forEach(skillId => unlockedSkillIds.add(skillId))
+        }
+      })
+    })
+
+    const totalTasks = TRAINING_STAGES.reduce((sum, stage) => sum + stage.tasks.length, 0)
+    const progress = totalTasks > 0 ? Math.round((completedTaskIds.length / totalTasks) * 100) : 0
+
+    const currentLevel = completedStages.length
+
+    return {
+      completedTasks: completedTaskIds.length,
+      totalTasks,
+      progress,
+      completedStages,
+      currentLevel,
+      unlockedSkills: Array.from(unlockedSkillIds)
+    }
+  })
+
+  const trainingStagesWithProgress = computed(() => {
+    const completedTaskSet = new Set(trainingCompletedTasks.value)
+    
+    return TRAINING_STAGES.map(stage => {
+      const completedTasks = stage.tasks.filter(task => completedTaskSet.has(task.id))
+      const isUnlocked = stage.unlockLevel <= trainingStats.value.currentLevel
+      const isCompleted = stage.tasks.every(task => completedTaskSet.has(task.id))
+      const progress = stage.tasks.length > 0 
+        ? Math.round((completedTasks.length / stage.tasks.length) * 100) 
+        : 0
+
+      return {
+        ...stage,
+        isUnlocked,
+        isCompleted,
+        progress,
+        completedCount: completedTasks.length,
+        totalCount: stage.tasks.length,
+        tasks: stage.tasks.map(task => ({
+          ...task,
+          isCompleted: completedTaskSet.has(task.id),
+          completedAt: trainingCompletedAt.value[task.id] || null,
+          recipe: recipes.value.find(r => r.id === task.recipeId)
+        }))
+      }
+    })
+  })
+
+  const unlockedAchievements = computed(() => {
+    const stats = trainingStats.value
+    return ACHIEVEMENTS.filter(a => a.condition(stats))
+  })
+
+  const newlyUnlockedAchievements = computed(() => {
+    const allUnlocked = unlockedAchievements.value.map(a => a.id)
+    return allUnlocked.filter(id => !trainingUnlockedAchievements.value.includes(id))
+  })
+
+  const skillsWithProgress = computed(() => {
+    const unlockedSet = new Set(trainingStats.value.unlockedSkills)
+    return Object.values(SKILLS).map(skill => ({
+      ...skill,
+      isUnlocked: unlockedSet.has(skill.id)
+    }))
+  })
+
+  function isTrainingTaskCompleted(taskId) {
+    return trainingCompletedTasks.value.includes(taskId)
+  }
+
+  function completeTrainingTask(taskId) {
+    if (!trainingCompletedTasks.value.includes(taskId)) {
+      trainingCompletedTasks.value.push(taskId)
+      trainingCompletedAt.value[taskId] = new Date().toISOString()
+      saveTrainingProgress()
+      
+      setTimeout(() => {
+        checkAchievements()
+      }, 100)
+    }
+  }
+
+  function uncompleteTrainingTask(taskId) {
+    const index = trainingCompletedTasks.value.indexOf(taskId)
+    if (index > -1) {
+      trainingCompletedTasks.value.splice(index, 1)
+      delete trainingCompletedAt.value[taskId]
+      saveTrainingProgress()
+    }
+  }
+
+  function saveTrainingProgress() {
+    localStorage.setItem('trainingCompletedTasks', JSON.stringify(trainingCompletedTasks.value))
+    localStorage.setItem('trainingCompletedAt', JSON.stringify(trainingCompletedAt.value))
+  }
+
+  function checkAchievements() {
+    const newUnlocked = newlyUnlockedAchievements.value
+    if (newUnlocked.length > 0) {
+      trainingUnlockedAchievements.value = [
+        ...trainingUnlockedAchievements.value,
+        ...newUnlocked
+      ]
+      localStorage.setItem('trainingUnlockedAchievements', JSON.stringify(trainingUnlockedAchievements.value))
+    }
+    return newUnlocked
+  }
+
+  function resetTrainingProgress() {
+    trainingCompletedTasks.value = []
+    trainingCompletedAt.value = {}
+    trainingUnlockedAchievements.value = []
+    localStorage.removeItem('trainingCompletedTasks')
+    localStorage.removeItem('trainingCompletedAt')
+    localStorage.removeItem('trainingUnlockedAchievements')
+  }
+
+  function getTaskRecipe(task) {
+    return recipes.value.find(r => r.id === task.recipeId)
+  }
+
   return {
     recipes,
     favorites,
@@ -1249,7 +1391,24 @@ export const useRecipeStore = defineStore('recipe', () => {
     isHolidayMenuFavorite,
     addHolidayMenuToFavorites,
     addHolidayMenuToShoppingList,
-    getHolidayMenuStats
+    getHolidayMenuStats,
+    trainingStages,
+    skills,
+    achievements,
+    trainingStats,
+    trainingStagesWithProgress,
+    unlockedAchievements,
+    newlyUnlockedAchievements,
+    skillsWithProgress,
+    trainingCompletedTasks,
+    trainingCompletedAt,
+    trainingUnlockedAchievements,
+    isTrainingTaskCompleted,
+    completeTrainingTask,
+    uncompleteTrainingTask,
+    checkAchievements,
+    resetTrainingProgress,
+    getTaskRecipe
   }
 }, {
   persist: {
@@ -1261,7 +1420,10 @@ export const useRecipeStore = defineStore('recipe', () => {
       'mealPlan',
       'shoppingListSelectedRecipes',
       'shoppingListCheckedItems',
-      'fridgeInventory'
+      'fridgeInventory',
+      'trainingCompletedTasks',
+      'trainingCompletedAt',
+      'trainingUnlockedAchievements'
     ]
   }
 })
