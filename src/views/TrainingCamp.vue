@@ -108,7 +108,7 @@
                       :type="isSkillUnlocked(skillId) ? 'success' : 'info'"
                       effect="plain"
                     >
-                      {{ skills[skillId]?.emoji }} {{ skills[skillId]?.name }}
+                      {{ getSkillById(skillId)?.emoji }} {{ getSkillById(skillId)?.name }}
                     </el-tag>
                   </div>
                 </div>
@@ -263,6 +263,10 @@ const progressColor = computed(() => {
 
 function getSkillsByLevel(level) {
   return skillsWithProgress.value.filter(s => s.level === level)
+}
+
+function getSkillById(skillId) {
+  return skills.value[skillId]
 }
 
 function isSkillUnlocked(skillId) {
