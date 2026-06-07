@@ -4,6 +4,14 @@ import { recipes as allRecipes, rawRecipes } from '../data/recipes'
 import { getCategory, parseAmount, formatAmount, categoryOrder, categoryEmojis } from '../data/ingredientCategories'
 import { HOLIDAY_MENUS, HOLIDAY_TYPES } from '../data/holidayMenus'
 import { TRAINING_STAGES, SKILLS, ACHIEVEMENTS } from '../data/trainingCamp'
+import {
+  LEFTOVER_CATEGORIES,
+  LEFTOVER_INGREDIENTS,
+  LEFTOVER_RECIPES,
+  getIngredientsByCategory,
+  getRecommendedRecipes,
+  getAllLeftoverRecipes
+} from '../data/leftoverRecipes'
 
 const TASTE_PREFERENCES = [
   { value: 'all', label: '不限口味', emoji: '🍽️' },
@@ -124,6 +132,24 @@ export const useRecipeStore = defineStore('recipe', () => {
   const trainingUnlockedAchievements = ref(JSON.parse(localStorage.getItem('trainingUnlockedAchievements') || '[]'))
 
   const compareRecipes = ref(JSON.parse(localStorage.getItem('compareRecipes') || '[]'))
+
+  const selectedLeftoverCategory = ref('all')
+  const selectedLeftoverIngredients = ref(JSON.parse(localStorage.getItem('selectedLeftoverIngredients') || '[]'))
+
+  const leftoverCategories = computed(() => LEFTOVER_CATEGORIES)
+  const leftoverIngredients = computed(() => getIngredientsByCategory(selectedLeftoverCategory.value))
+  const allLeftoverIngredients = computed(() => LEFTOVER_INGREDIENTS)
+  const allLeftoverRecipes = computed(() => getAllLeftoverRecipes())
+
+  const recommendedLeftoverRecipes = computed(() => {
+    return getRecommendedRecipes(selectedLeftoverIngredients.value)
+  })
+
+  const selectedLeftoverIngredientObjects = computed(() => {
+    return LEFTOVER_INGREDIENTS.filter(i => selectedLeftoverIngredients.value.includes(i.id))
+  })
+
+  const selectedLeftoverCount = computed(() => selectedLeftoverIngredients.value.length)
 
   const filteredRecipes = computed(() => {
     let result = recipes.value
@@ -1339,6 +1365,37 @@ export const useRecipeStore = defineStore('recipe', () => {
     return recipes.value.find(r => r.id === task.recipeId)
   }
 
+  function setLeftoverCategory(category) {
+    selectedLeftoverCategory.value = category
+  }
+
+  function toggleLeftoverIngredient(ingredientId) {
+    const index = selectedLeftoverIngredients.value.indexOf(ingredientId)
+    if (index === -1) {
+      selectedLeftoverIngredients.value = [...selectedLeftoverIngredients.value, ingredientId]
+    } else {
+      selectedLeftoverIngredients.value = selectedLeftoverIngredients.value.filter(id => id !== ingredientId)
+    }
+    saveSelectedLeftoverIngredients()
+  }
+
+  function isLeftoverSelected(ingredientId) {
+    return selectedLeftoverIngredients.value.includes(ingredientId)
+  }
+
+  function clearSelectedLeftovers() {
+    selectedLeftoverIngredients.value = []
+    saveSelectedLeftoverIngredients()
+  }
+
+  function saveSelectedLeftoverIngredients() {
+    localStorage.setItem('selectedLeftoverIngredients', JSON.stringify(selectedLeftoverIngredients.value))
+  }
+
+  function getLeftoverRecipeById(id) {
+    return LEFTOVER_RECIPES.find(r => r.id === Number(id))
+  }
+
   return {
     recipes,
     favorites,
@@ -1462,7 +1519,21 @@ export const useRecipeStore = defineStore('recipe', () => {
     uncompleteTrainingTask,
     checkAchievements,
     resetTrainingProgress,
-    getTaskRecipe
+    getTaskRecipe,
+    leftoverCategories,
+    leftoverIngredients,
+    allLeftoverIngredients,
+    allLeftoverRecipes,
+    selectedLeftoverCategory,
+    selectedLeftoverIngredients,
+    selectedLeftoverIngredientObjects,
+    selectedLeftoverCount,
+    recommendedLeftoverRecipes,
+    setLeftoverCategory,
+    toggleLeftoverIngredient,
+    isLeftoverSelected,
+    clearSelectedLeftovers,
+    getLeftoverRecipeById
   }
 }, {
   persist: {

@@ -11,6 +11,8 @@ import FridgeInventory from '../views/FridgeInventory.vue'
 import HolidayMenus from '../views/HolidayMenus.vue'
 import TrainingCamp from '../views/TrainingCamp.vue'
 import RecipeCompare from '../views/RecipeCompare.vue'
+import LeftoverReuse from '../views/LeftoverReuse.vue'
+import LeftoverDetail from '../views/LeftoverDetail.vue'
 
 const routes = [
   {
@@ -74,6 +76,17 @@ const routes = [
     path: '/compare',
     name: 'RecipeCompare',
     component: RecipeCompare
+  },
+  {
+    path: '/leftover',
+    name: 'LeftoverReuse',
+    component: LeftoverReuse
+  },
+  {
+    path: '/leftover/:id',
+    name: 'LeftoverDetail',
+    component: LeftoverDetail,
+    props: true
   }
 ]
 

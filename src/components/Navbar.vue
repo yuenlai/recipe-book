@@ -34,6 +34,11 @@
           <span>训练营</span>
         </router-link>
 
+        <router-link to="/leftover" class="nav-link" active-class="active">
+          <el-icon><Refresh /></el-icon>
+          <span>剩菜利用</span>
+        </router-link>
+
         <router-link to="/shopping-list" class="nav-link" active-class="active">
           <el-badge :value="shoppingListCount" :hidden="shoppingListCount === 0" class="badge">
             <el-icon><ShoppingCart /></el-icon>
@@ -81,7 +86,7 @@
 import { computed } from 'vue'
 import { useRecipeStore } from '../stores/recipe'
 import SearchBar from './SearchBar.vue'
-import { DataLine } from '@element-plus/icons-vue'
+import { DataLine, Refresh } from '@element-plus/icons-vue'
 
 const store = useRecipeStore()
 
