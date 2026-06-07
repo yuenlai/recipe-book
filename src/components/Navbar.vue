@@ -19,6 +19,11 @@
           <span>备餐</span>
         </router-link>
 
+        <router-link to="/dinner-party" class="nav-link" active-class="active">
+          <el-icon><Food /></el-icon>
+          <span>聚餐</span>
+        </router-link>
+
         <router-link to="/shopping-list" class="nav-link" active-class="active">
           <el-badge :value="shoppingListCount" :hidden="shoppingListCount === 0" class="badge">
             <el-icon><ShoppingCart /></el-icon>

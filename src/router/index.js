@@ -6,6 +6,7 @@ import TimerPage from '../views/TimerPage.vue'
 import MealPlan from '../views/MealPlan.vue'
 import ShoppingList from '../views/ShoppingList.vue'
 import CookingMode from '../views/CookingMode.vue'
+import DinnerParty from '../views/DinnerParty.vue'
 
 const routes = [
   {
@@ -38,6 +39,11 @@ const routes = [
     path: '/shopping-list',
     name: 'ShoppingList',
     component: ShoppingList
+  },
+  {
+    path: '/dinner-party',
+    name: 'DinnerParty',
+    component: DinnerParty
   },
   {
     path: '/recipe/:id/cooking',
