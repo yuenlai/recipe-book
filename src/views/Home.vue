@@ -5,6 +5,24 @@
       <p>发现美味，享受烹饪的乐趣</p>
     </div>
 
+    <div class="quick-entry-section">
+      <router-link to="/breakfast" class="quick-entry-card breakfast-card">
+        <div class="entry-icon">🌅</div>
+        <div class="entry-content">
+          <h3>早餐专区</h3>
+          <p>按起床后可用时间快速筛选</p>
+          <div class="entry-tags">
+            <el-tag size="small" type="success" effect="light">⏱️ 10分钟</el-tag>
+            <el-tag size="small" type="warning" effect="light">⏰ 20分钟</el-tag>
+            <el-tag size="small" type="danger" effect="light">👨‍🍳 30分钟</el-tag>
+          </div>
+        </div>
+        <div class="entry-arrow">
+          <el-icon><ArrowRight /></el-icon>
+        </div>
+      </router-link>
+    </div>
+
     <div v-if="hasMealsPlanned" class="week-plan-preview">
       <div class="preview-header">
         <div class="preview-title">
@@ -197,6 +215,93 @@ function goToRecipe(id) {
 <style scoped>
 .home-page {
   padding-bottom: 40px;
+}
+
+.quick-entry-section {
+  margin-bottom: 24px;
+}
+
+.quick-entry-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  background: linear-gradient(135deg, #FFF7E6 0%, #FFF0E8 100%);
+  border-radius: 16px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 2px solid transparent;
+}
+
+.quick-entry-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.15);
+  border-color: #FFE4D6;
+}
+
+.breakfast-card {
+  background: linear-gradient(135deg, #FFF7E6 0%, #FFE4D6 50%, #FFF0E8 100%);
+}
+
+.entry-icon {
+  font-size: 48px;
+  flex-shrink: 0;
+}
+
+.entry-content {
+  flex: 1;
+}
+
+.entry-content h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #3D3D3D;
+  margin: 0 0 6px 0;
+}
+
+.entry-content p {
+  font-size: 14px;
+  color: #757575;
+  margin: 0 0 12px 0;
+}
+
+.entry-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.entry-arrow {
+  font-size: 24px;
+  color: #FF6B35;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.quick-entry-card:hover .entry-arrow {
+  transform: translateX(4px);
+}
+
+@media (max-width: 600px) {
+  .quick-entry-card {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .entry-icon {
+    font-size: 36px;
+  }
+
+  .entry-content h3 {
+    font-size: 18px;
+  }
+
+  .entry-arrow {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 .page-header {

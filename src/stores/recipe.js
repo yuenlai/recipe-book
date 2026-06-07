@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { recipes as allRecipes, rawRecipes } from '../data/recipes'
+import { breakfastRecipes } from '../data/breakfastRecipes'
 import { getCategory, parseAmount, formatAmount, categoryOrder, categoryEmojis } from '../data/ingredientCategories'
 import { HOLIDAY_MENUS, HOLIDAY_TYPES } from '../data/holidayMenus'
 import { TRAINING_STAGES, SKILLS, ACHIEVEMENTS } from '../data/trainingCamp'
@@ -12,6 +13,8 @@ import {
   getRecommendedRecipes,
   getAllLeftoverRecipes
 } from '../data/leftoverRecipes'
+
+const allRecipesWithBreakfast = [...allRecipes, ...breakfastRecipes]
 
 const TASTE_PREFERENCES = [
   { value: 'all', label: '不限口味', emoji: '🍽️' },
@@ -110,7 +113,7 @@ function initializeMealPlan() {
 }
 
 export const useRecipeStore = defineStore('recipe', () => {
-  const recipes = ref(allRecipes)
+  const recipes = ref(allRecipesWithBreakfast)
   const favorites = ref(JSON.parse(localStorage.getItem('recipeFavorites') || '[]'))
   const timers = ref([])
   const searchQuery = ref('')

@@ -13,6 +13,7 @@ import TrainingCamp from '../views/TrainingCamp.vue'
 import RecipeCompare from '../views/RecipeCompare.vue'
 import LeftoverReuse from '../views/LeftoverReuse.vue'
 import LeftoverDetail from '../views/LeftoverDetail.vue'
+import Breakfast from '../views/Breakfast.vue'
 
 const routes = [
   {
@@ -87,6 +88,11 @@ const routes = [
     name: 'LeftoverDetail',
     component: LeftoverDetail,
     props: true
+  },
+  {
+    path: '/breakfast',
+    name: 'Breakfast',
+    component: Breakfast
   }
 ]
 

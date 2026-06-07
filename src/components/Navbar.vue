@@ -12,6 +12,11 @@
           <span>首页</span>
         </router-link>
 
+        <router-link to="/breakfast" class="nav-link" active-class="active">
+          <el-icon><Sunrise /></el-icon>
+          <span>早餐</span>
+        </router-link>
+
         <router-link to="/meal-plan" class="nav-link" active-class="active">
           <el-badge :value="mealPlanCount" :hidden="mealPlanCount === 0" class="badge">
             <el-icon><Calendar /></el-icon>
@@ -86,7 +91,7 @@
 import { computed } from 'vue'
 import { useRecipeStore } from '../stores/recipe'
 import SearchBar from './SearchBar.vue'
-import { DataLine, Refresh } from '@element-plus/icons-vue'
+import { DataLine, Refresh, Sunrise } from '@element-plus/icons-vue'
 
 const store = useRecipeStore()
 
