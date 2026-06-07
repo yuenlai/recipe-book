@@ -167,13 +167,13 @@
       </div>
 
       <div class="action-bar">
-        <el-button type="danger" size="large" @click="handleAddToFavorites">
+        <el-button :type="allRecipesFavorited ? 'success' : 'danger'" size="large" @click="handleAddToFavorites">
           <el-icon><StarFilled /></el-icon>
-          {{ isHolidayMenuFavorite(selectedMenu.id) ? '已收藏菜单' : '收藏整套餐单' }}
+          {{ allRecipesFavorited ? '✓ 菜谱已全部收藏' : '收藏整套餐单' }}
         </el-button>
-        <el-button type="success" size="large" @click="handleAddToShoppingList">
+        <el-button :type="allInShoppingList ? 'success' : 'success'" size="large" @click="handleAddToShoppingList">
           <el-icon><ShoppingCart /></el-icon>
-          生成购物清单
+          {{ allInShoppingList ? '✓ 已在购物清单' : '生成购物清单' }}
         </el-button>
         <el-button type="primary" size="large" @click="handleAddToMealPlan">
           <el-icon><Calendar /></el-icon>
@@ -327,6 +327,26 @@ const menuStats = computed(() => {
   return store.getHolidayMenuStats(selectedMenu.value.id)
 })
 
+const allRecipesFavorited = computed(() => {
+  if (!selectedMenu.value) return false
+  return selectedMenu.value.recipes.every(r => store.isFavorite(r.id))
+})
+
+const allInShoppingList = computed(() => {
+  if (!selectedMenu.value) return false
+  return selectedMenu.value.recipes.every(r => store.isRecipeSelectedForShopping(r.id))
+})
+
+const favoritedCount = computed(() => {
+  if (!selectedMenu.value) return 0
+  return selectedMenu.value.recipes.filter(r => store.isFavorite(r.id)).length
+})
+
+const inShoppingListCount = computed(() => {
+  if (!selectedMenu.value) return 0
+  return selectedMenu.value.recipes.filter(r => store.isRecipeSelectedForShopping(r.id)).length
+})
+
 watch(selectedMenu, (newVal) => {
   if (newVal) {
     store.setCurrentHolidayMenu(newVal.id)
@@ -375,39 +395,104 @@ function getDifficultyType(difficulty) {
 
 function handleAddToFavorites() {
   if (!selectedMenu.value) return
+  const menuName = selectedMenu.value.name
+  const totalCount = selectedMenu.value.recipes.length
+  const alreadyCount = favoritedCount.value
+
+  if (allRecipesFavorited.value) {
+    ElMessageBox.confirm(
+      `「${menuName}」的 ${totalCount} 道菜已全部在收藏中，是否前往收藏页查看？`,
+      '菜谱已收藏',
+      {
+        confirmButtonText: '前往收藏页',
+        cancelButtonText: '留在本页',
+        type: 'info'
+      }
+    ).then(() => {
+      router.push('/favorites')
+    }).catch(() => {})
+    return
+  }
+
   ElMessageBox.confirm(
-    `确定要将 ${selectedMenu.value.name} 的 ${selectedMenu.value.recipes.length} 道菜全部加入收藏吗？`,
+    `确定要将「${menuName}」的 ${totalCount} 道菜加入收藏吗？\n其中 ${alreadyCount} 道已在收藏中，将新增 ${totalCount - alreadyCount} 道。`,
     '收藏整套餐单',
     {
-      confirmButtonText: '确定收藏',
-      cancelButtonText: '取消',
+      confirmButtonText: '收藏并跳转',
+      cancelButtonText: '仅收藏',
+      distinguishCancelAndClose: true,
       type: 'warning'
     }
   ).then(() => {
-    store.addHolidayMenuToFavorites(selectedMenu.value.id)
-    store.toggleHolidayMenuFavorite(selectedMenu.value.id)
-    ElMessage.success('已将整套餐单加入收藏！')
-  }).catch(() => {})
+    const result = store.addHolidayMenuToFavorites(selectedMenu.value.id)
+    ElMessage.success({
+      message: `收藏成功！新增 ${result.added} 道菜，共 ${result.total} 道已收藏`,
+      duration: 2500,
+      showClose: true
+    })
+    setTimeout(() => {
+      router.push('/favorites')
+    }, 800)
+  }).catch(action => {
+    if (action === 'cancel') {
+      const result = store.addHolidayMenuToFavorites(selectedMenu.value.id)
+      ElMessage.success({
+        message: `已收藏！新增 ${result.added} 道菜，可前往收藏页查看`,
+        duration: 2500,
+        showClose: true
+      })
+    }
+  })
 }
 
 function handleAddToShoppingList() {
   if (!selectedMenu.value) return
+  const menuName = selectedMenu.value.name
+  const totalCount = selectedMenu.value.recipes.length
+  const alreadyCount = inShoppingListCount.value
+
+  if (allInShoppingList.value) {
+    ElMessageBox.confirm(
+      `「${menuName}」的 ${totalCount} 道菜已全部在购物清单中，是否前往查看？`,
+      '已在购物清单',
+      {
+        confirmButtonText: '前往购物清单',
+        cancelButtonText: '留在本页',
+        type: 'info'
+      }
+    ).then(() => {
+      router.push('/shopping-list')
+    }).catch(() => {})
+    return
+  }
+
   ElMessageBox.confirm(
-    `确定要将 ${selectedMenu.value.name} 的食材加入购物清单吗？`,
+    `确定要将「${menuName}」的 ${totalCount} 道菜加入购物清单吗？\n其中 ${alreadyCount} 道已在清单中，将新增 ${totalCount - alreadyCount} 道。`,
     '生成购物清单',
     {
       confirmButtonText: '加入并跳转',
       cancelButtonText: '仅加入',
       distinguishCancelAndClose: true,
-      type: 'info'
+      type: 'success'
     }
   ).then(() => {
-    store.addHolidayMenuToShoppingList(selectedMenu.value.id)
-    router.push('/shopping-list')
+    const result = store.addHolidayMenuToShoppingList(selectedMenu.value.id)
+    ElMessage.success({
+      message: `已加入！新增 ${result.added} 道菜，共 ${result.total} 道菜谱在购物清单中`,
+      duration: 2500,
+      showClose: true
+    })
+    setTimeout(() => {
+      router.push('/shopping-list')
+    }, 800)
   }).catch(action => {
     if (action === 'cancel') {
-      store.addHolidayMenuToShoppingList(selectedMenu.value.id)
-      ElMessage.success('已加入购物清单！')
+      const result = store.addHolidayMenuToShoppingList(selectedMenu.value.id)
+      ElMessage.success({
+        message: `已加入购物清单！新增 ${result.added} 道菜`,
+        duration: 2500,
+        showClose: true
+      })
     }
   })
 }

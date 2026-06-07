@@ -1025,20 +1025,40 @@ export const useRecipeStore = defineStore('recipe', () => {
 
   function addHolidayMenuToFavorites(menuId) {
     const menu = getHolidayMenuById(menuId)
-    if (!menu) return
+    if (!menu) return { added: 0, already: 0 }
+    let addedCount = 0
+    let alreadyCount = 0
     menu.recipes.forEach(recipe => {
       if (!favorites.value.includes(recipe.id)) {
-        favorites.value.push(recipe.id)
+        toggleFavorite(recipe.id)
+        addedCount++
+      } else {
+        alreadyCount++
       }
     })
-    localStorage.setItem('recipeFavorites', JSON.stringify(favorites.value))
+    if (!favoriteHolidayMenus.value.includes(menuId)) {
+      favoriteHolidayMenus.value.push(menuId)
+      localStorage.setItem('favoriteHolidayMenus', JSON.stringify(favoriteHolidayMenus.value))
+    }
+    return { added: addedCount, already: alreadyCount, total: menu.recipes.length }
   }
 
   function addHolidayMenuToShoppingList(menuId) {
     const menu = getHolidayMenuById(menuId)
-    if (!menu) return
+    if (!menu) return { added: 0, already: 0 }
     const recipeIds = menu.recipes.map(r => r.id)
-    addRecipesToShoppingList(recipeIds)
+    let addedCount = 0
+    let alreadyCount = 0
+    recipeIds.forEach(id => {
+      if (!shoppingListSelectedRecipes.value.includes(id)) {
+        shoppingListSelectedRecipes.value.push(id)
+        addedCount++
+      } else {
+        alreadyCount++
+      }
+    })
+    saveShoppingListSelection()
+    return { added: addedCount, already: alreadyCount, total: recipeIds.length, recipeIds }
   }
 
   function getHolidayMenuStats(menuId) {
