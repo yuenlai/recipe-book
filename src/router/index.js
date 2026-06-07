@@ -14,6 +14,7 @@ import RecipeCompare from '../views/RecipeCompare.vue'
 import LeftoverReuse from '../views/LeftoverReuse.vue'
 import LeftoverDetail from '../views/LeftoverDetail.vue'
 import Breakfast from '../views/Breakfast.vue'
+import FatLossPlan from '../views/FatLossPlan.vue'
 
 const routes = [
   {
@@ -93,6 +94,11 @@ const routes = [
     path: '/breakfast',
     name: 'Breakfast',
     component: Breakfast
+  },
+  {
+    path: '/fat-loss',
+    name: 'FatLossPlan',
+    component: FatLossPlan
   }
 ]
 

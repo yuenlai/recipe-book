@@ -13,6 +13,16 @@ import {
   getRecommendedRecipes,
   getAllLeftoverRecipes
 } from '../data/leftoverRecipes'
+import {
+  lowFatRecipes,
+  FAT_LOSS_WEEK_PLAN,
+  FAT_LOSS_TIPS,
+  FAT_LOSS_NUTRIENT_GOALS,
+  getFatLossRecipeById,
+  getWeekPlanWithRecipes,
+  calculateDayNutrition,
+  calculateWeekNutrition
+} from '../data/fatLossPlan'
 
 const allRecipesWithBreakfast = [...allRecipes, ...breakfastRecipes]
 
@@ -139,6 +149,9 @@ export const useRecipeStore = defineStore('recipe', () => {
   const selectedLeftoverCategory = ref('all')
   const selectedLeftoverIngredients = ref(JSON.parse(localStorage.getItem('selectedLeftoverIngredients') || '[]'))
 
+  const fatLossCompletedDays = ref(JSON.parse(localStorage.getItem('fatLossCompletedDays') || '[]'))
+  const fatLossCurrentWeek = ref(JSON.parse(localStorage.getItem('fatLossCurrentWeek') || 'null'))
+
   const leftoverCategories = computed(() => LEFTOVER_CATEGORIES)
   const leftoverIngredients = computed(() => getIngredientsByCategory(selectedLeftoverCategory.value))
   const allLeftoverIngredients = computed(() => LEFTOVER_INGREDIENTS)
@@ -146,6 +159,35 @@ export const useRecipeStore = defineStore('recipe', () => {
 
   const recommendedLeftoverRecipes = computed(() => {
     return getRecommendedRecipes(selectedLeftoverIngredients.value)
+  })
+
+  const lowFatRecipesList = computed(() => lowFatRecipes)
+  const fatLossTips = computed(() => FAT_LOSS_TIPS)
+  const fatLossNutrientGoals = computed(() => FAT_LOSS_NUTRIENT_GOALS)
+
+  const fatLossWeekPlan = computed(() => {
+    const plan = getWeekPlanWithRecipes()
+    return plan.map(day => ({
+      ...day,
+      nutrition: calculateDayNutrition(day),
+      isCompleted: fatLossCompletedDays.value.includes(day.day)
+    }))
+  })
+
+  const fatLossWeekNutrition = computed(() => calculateWeekNutrition())
+
+  const fatLossStats = computed(() => {
+    const weekPlan = fatLossWeekPlan.value
+    const completedDays = fatLossCompletedDays.value.length
+    const totalDays = weekPlan.length
+    const progress = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0
+    
+    return {
+      completedDays,
+      totalDays,
+      progress,
+      isWeekComplete: completedDays === totalDays
+    }
   })
 
   const selectedLeftoverIngredientObjects = computed(() => {
@@ -1399,6 +1441,58 @@ export const useRecipeStore = defineStore('recipe', () => {
     return LEFTOVER_RECIPES.find(r => r.id === Number(id))
   }
 
+  function getLowFatRecipeById(id) {
+    return lowFatRecipes.find(r => r.id === Number(id))
+  }
+
+  function toggleFatLossDayComplete(dayNumber) {
+    const index = fatLossCompletedDays.value.indexOf(dayNumber)
+    if (index === -1) {
+      fatLossCompletedDays.value = [...fatLossCompletedDays.value, dayNumber]
+    } else {
+      fatLossCompletedDays.value = fatLossCompletedDays.value.filter(d => d !== dayNumber)
+    }
+    saveFatLossProgress()
+  }
+
+  function isFatLossDayComplete(dayNumber) {
+    return fatLossCompletedDays.value.includes(dayNumber)
+  }
+
+  function resetFatLossProgress() {
+    fatLossCompletedDays.value = []
+    localStorage.removeItem('fatLossCompletedDays')
+  }
+
+  function saveFatLossProgress() {
+    localStorage.setItem('fatLossCompletedDays', JSON.stringify(fatLossCompletedDays.value))
+  }
+
+  function addFatLossRecipeToMealPlan(dateKey, mealType, recipeId) {
+    addRecipeToMeal(dateKey, mealType, recipeId)
+  }
+
+  function addFatLossDayToShoppingList(dayPlan) {
+    const recipeIds = [
+      ...dayPlan.breakfast,
+      ...dayPlan.lunch,
+      ...dayPlan.dinner,
+      ...dayPlan.snack
+    ]
+    addRecipesToShoppingList(recipeIds)
+  }
+
+  function addFatLossWeekToShoppingList() {
+    const recipeIds = new Set()
+    FAT_LOSS_WEEK_PLAN.forEach(day => {
+      day.breakfast.forEach(id => recipeIds.add(id))
+      day.lunch.forEach(id => recipeIds.add(id))
+      day.dinner.forEach(id => recipeIds.add(id))
+      day.snack.forEach(id => recipeIds.add(id))
+    })
+    addRecipesToShoppingList(Array.from(recipeIds))
+  }
+
   return {
     recipes,
     favorites,
@@ -1536,7 +1630,21 @@ export const useRecipeStore = defineStore('recipe', () => {
     toggleLeftoverIngredient,
     isLeftoverSelected,
     clearSelectedLeftovers,
-    getLeftoverRecipeById
+    getLeftoverRecipeById,
+    lowFatRecipesList,
+    fatLossTips,
+    fatLossNutrientGoals,
+    fatLossWeekPlan,
+    fatLossWeekNutrition,
+    fatLossStats,
+    fatLossCompletedDays,
+    getLowFatRecipeById,
+    toggleFatLossDayComplete,
+    isFatLossDayComplete,
+    resetFatLossProgress,
+    addFatLossRecipeToMealPlan,
+    addFatLossDayToShoppingList,
+    addFatLossWeekToShoppingList
   }
 }, {
   persist: {
@@ -1552,7 +1660,8 @@ export const useRecipeStore = defineStore('recipe', () => {
       'trainingCompletedTasks',
       'trainingCompletedAt',
       'trainingUnlockedAchievements',
-      'compareRecipes'
+      'compareRecipes',
+      'fatLossCompletedDays'
     ]
   }
 })

@@ -39,6 +39,11 @@
           <span>训练营</span>
         </router-link>
 
+        <router-link to="/fat-loss" class="nav-link" active-class="active">
+          <el-icon><Aim /></el-icon>
+          <span>减脂计划</span>
+        </router-link>
+
         <router-link to="/leftover" class="nav-link" active-class="active">
           <el-icon><Refresh /></el-icon>
           <span>剩菜利用</span>
@@ -91,7 +96,7 @@
 import { computed } from 'vue'
 import { useRecipeStore } from '../stores/recipe'
 import SearchBar from './SearchBar.vue'
-import { DataLine, Refresh, Sunrise } from '@element-plus/icons-vue'
+import { DataLine, Refresh, Sunrise, Aim } from '@element-plus/icons-vue'
 
 const store = useRecipeStore()
 
