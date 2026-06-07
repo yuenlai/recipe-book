@@ -787,6 +787,191 @@ export const useRecipeStore = defineStore('recipe', () => {
     }
   }
 
+  const fridgeInventory = ref(JSON.parse(localStorage.getItem('fridgeInventory') || '[]'))
+
+  function getDaysUntilExpiry(expiryDate) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const expiry = new Date(expiryDate)
+    expiry.setHours(0, 0, 0, 0)
+    const diffTime = expiry - today
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }
+
+  function getExpiryStatus(expiryDate) {
+    const days = getDaysUntilExpiry(expiryDate)
+    if (days < 0) return { status: 'expired', days, label: '已过期', color: '#F56C6C' }
+    if (days === 0) return { status: 'today', days, label: '今天到期', color: '#F56C6C' }
+    if (days <= 3) return { status: 'urgent', days, label: `${days}天后过期`, color: '#E6A23C' }
+    if (days <= 7) return { status: 'soon', days, label: `${days}天后过期`, color: '#67C23A' }
+    return { status: 'normal', days, label: `${days}天后过期`, color: '#909399' }
+  }
+
+  const fridgeInventoryWithStatus = computed(() => {
+    return fridgeInventory.value.map(item => ({
+      ...item,
+      expiryInfo: getExpiryStatus(item.expiryDate),
+      category: getCategory(item.name)
+    })).sort((a, b) => {
+      const priority = { expired: 0, today: 1, urgent: 2, soon: 3, normal: 4 }
+      const statusDiff = priority[a.expiryInfo.status] - priority[b.expiryInfo.status]
+      if (statusDiff !== 0) return statusDiff
+      return new Date(a.expiryDate) - new Date(b.expiryDate)
+    })
+  })
+
+  const expiringItems = computed(() => {
+    return fridgeInventoryWithStatus.value.filter(
+      item => item.expiryInfo.status === 'today' || item.expiryInfo.status === 'urgent'
+    )
+  })
+
+  const expiredItems = computed(() => {
+    return fridgeInventoryWithStatus.value.filter(
+      item => item.expiryInfo.status === 'expired'
+    )
+  })
+
+  const fridgeStats = computed(() => {
+    const items = fridgeInventoryWithStatus.value
+    return {
+      total: items.length,
+      expiring: expiringItems.value.length,
+      expired: expiredItems.value.length,
+      categories: [...new Set(items.map(i => i.category))].length
+    }
+  })
+
+  const groupedFridgeInventory = computed(() => {
+    const groups = {}
+    categoryOrder.forEach(cat => { groups[cat] = [] })
+    
+    fridgeInventoryWithStatus.value.forEach(item => {
+      if (!groups[item.category]) groups[item.category] = []
+      groups[item.category].push(item)
+    })
+
+    const result = []
+    categoryOrder.forEach(cat => {
+      if (groups[cat] && groups[cat].length > 0) {
+        result.push({
+          category: cat,
+          emoji: categoryEmojis[cat] || '📦',
+          items: groups[cat]
+        })
+      }
+    })
+
+    Object.keys(groups).forEach(cat => {
+      if (!categoryOrder.includes(cat) && groups[cat].length > 0) {
+        result.push({
+          category: cat,
+          emoji: categoryEmojis[cat] || '📦',
+          items: groups[cat]
+        })
+      }
+    })
+
+    return result
+  })
+
+  function addFridgeItem(item) {
+    const newItem = {
+      id: Date.now(),
+      name: item.name.trim(),
+      quantity: item.quantity,
+      unit: item.unit || 'g',
+      purchaseDate: item.purchaseDate || new Date().toISOString().split('T')[0],
+      expiryDate: item.expiryDate,
+      note: item.note || ''
+    }
+    fridgeInventory.value.push(newItem)
+    saveFridgeInventory()
+    return newItem
+  }
+
+  function updateFridgeItem(id, updates) {
+    const index = fridgeInventory.value.findIndex(item => item.id === id)
+    if (index !== -1) {
+      fridgeInventory.value[index] = {
+        ...fridgeInventory.value[index],
+        ...updates
+      }
+      saveFridgeInventory()
+    }
+  }
+
+  function removeFridgeItem(id) {
+    const index = fridgeInventory.value.findIndex(item => item.id === id)
+    if (index !== -1) {
+      fridgeInventory.value.splice(index, 1)
+      saveFridgeInventory()
+    }
+  }
+
+  function clearFridgeInventory() {
+    fridgeInventory.value = []
+    saveFridgeInventory()
+  }
+
+  function removeExpiredItems() {
+    fridgeInventory.value = fridgeInventory.value.filter(
+      item => getExpiryStatus(item.expiryDate).status !== 'expired'
+    )
+    saveFridgeInventory()
+  }
+
+  function saveFridgeInventory() {
+    localStorage.setItem('fridgeInventory', JSON.stringify(fridgeInventory.value))
+  }
+
+  const recommendedRecipesForFridge = computed(() => {
+    const expiringIngredientNames = expiringItems.value.map(i => i.name)
+    
+    if (expiringIngredientNames.length === 0) return []
+
+    const scored = recipes.value.map(recipe => {
+      const matchedIngredients = recipe.ingredients.filter(ing =>
+        expiringIngredientNames.some(name =>
+          ing.name.includes(name) || name.includes(ing.name)
+        )
+      )
+      
+      const matchedExpiringItems = expiringItems.value.filter(item =>
+        recipe.ingredients.some(ing =>
+          ing.name.includes(item.name) || item.name.includes(ing.name)
+        )
+      )
+      
+      return {
+        recipe,
+        matchCount: matchedIngredients.length,
+        matchedItems: matchedExpiringItems,
+        score: matchedIngredients.length * 100 + (100 - recipe.ingredients.length)
+      }
+    }).filter(r => r.matchCount > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+    return scored
+  })
+
+  function useFridgeIngredient(recipeId, ingredientName, amountUsed) {
+    const ingredient = fridgeInventory.value.find(item =>
+      item.name === ingredientName || ingredientName.includes(item.name)
+    )
+    if (!ingredient) return
+    
+    const parsed = parseAmount(amountUsed)
+    if (parsed.value !== null && ingredient.quantity !== null) {
+      const newQuantity = ingredient.quantity - parsed.value
+      if (newQuantity <= 0) {
+        removeFridgeItem(ingredient.id)
+      } else {
+        updateFridgeItem(ingredient.id, { quantity: newQuantity })
+      }
+    }
+  }
+
   return {
     recipes,
     favorites,
@@ -817,6 +1002,13 @@ export const useRecipeStore = defineStore('recipe', () => {
     dinnerPartyHistory,
     tastePreferences,
     recipesWithClassification,
+    fridgeInventory,
+    fridgeInventoryWithStatus,
+    expiringItems,
+    expiredItems,
+    fridgeStats,
+    groupedFridgeInventory,
+    recommendedRecipesForFridge,
     toggleFavorite,
     isFavorite,
     getRecipeById,
@@ -856,7 +1048,14 @@ export const useRecipeStore = defineStore('recipe', () => {
     setDinnerPartyPeople,
     setDinnerPartyTaste,
     addDinnerPartyToShoppingList,
-    addDinnerPartyRecipesToMealPlan
+    addDinnerPartyRecipesToMealPlan,
+    addFridgeItem,
+    updateFridgeItem,
+    removeFridgeItem,
+    clearFridgeInventory,
+    removeExpiredItems,
+    getExpiryStatus,
+    useFridgeIngredient
   }
 }, {
   persist: {
@@ -867,7 +1066,8 @@ export const useRecipeStore = defineStore('recipe', () => {
       'favorites',
       'mealPlan',
       'shoppingListSelectedRecipes',
-      'shoppingListCheckedItems'
+      'shoppingListCheckedItems',
+      'fridgeInventory'
     ]
   }
 })

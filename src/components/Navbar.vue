@@ -31,6 +31,13 @@
           <span>购物清单</span>
         </router-link>
 
+        <router-link to="/fridge" class="nav-link" active-class="active">
+          <el-badge :value="expiringCount" :hidden="expiringCount === 0" class="badge" type="warning">
+            <el-icon><Refrigerator /></el-icon>
+          </el-badge>
+          <span>冰箱库存</span>
+        </router-link>
+
         <router-link to="/favorites" class="nav-link" active-class="active">
           <el-badge :value="favoriteCount" :hidden="favoriteCount === 0" class="badge">
             <el-icon><StarFilled /></el-icon>
@@ -68,6 +75,7 @@ const mealPlanCount = computed(() => {
 const shoppingListCount = computed(() => {
   return store.shoppingListStats.totalItems > 0 ? store.shoppingListStats.totalItems : 0
 })
+const expiringCount = computed(() => store.fridgeStats.expiring)
 </script>
 
 <style scoped>

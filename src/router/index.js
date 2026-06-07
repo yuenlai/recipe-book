@@ -7,6 +7,7 @@ import MealPlan from '../views/MealPlan.vue'
 import ShoppingList from '../views/ShoppingList.vue'
 import CookingMode from '../views/CookingMode.vue'
 import DinnerParty from '../views/DinnerParty.vue'
+import FridgeInventory from '../views/FridgeInventory.vue'
 
 const routes = [
   {
@@ -50,6 +51,11 @@ const routes = [
     name: 'CookingMode',
     component: CookingMode,
     props: true
+  },
+  {
+    path: '/fridge',
+    name: 'FridgeInventory',
+    component: FridgeInventory
   }
 ]
 

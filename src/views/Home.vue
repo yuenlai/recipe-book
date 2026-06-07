@@ -67,6 +67,56 @@
       </el-button>
     </div>
 
+    <div v-if="fridgeRecommendations.length > 0" class="fridge-recommend-section">
+      <div class="section-header">
+        <div class="section-title">
+          <el-icon><Refrigerator /></el-icon>
+          <span>冰箱智能推荐</span>
+          <el-tag type="warning" size="small" effect="light">
+            {{ fridgeExpiringCount }} 种食材快到期
+          </el-tag>
+        </div>
+        <router-link to="/fridge" class="view-all-link">
+          管理冰箱
+          <el-icon><ArrowRight /></el-icon>
+        </router-link>
+      </div>
+      <div class="fridge-recommend-grid">
+        <div
+          v-for="item in fridgeRecommendations"
+          :key="item.recipe.id"
+          class="fridge-recommend-card"
+          @click="goToRecipe(item.recipe.id)"
+        >
+          <div class="card-badge">优先推荐</div>
+          <div class="card-emoji" :style="{ backgroundColor: item.recipe.coverColor }">
+            {{ item.recipe.emoji }}
+          </div>
+          <div class="card-content">
+            <div class="card-name">{{ item.recipe.name }}</div>
+            <div class="card-desc">{{ item.recipe.description }}</div>
+            <div class="card-match-info">
+              <div class="match-count">
+                <el-icon><StarFilled /></el-icon>
+                可消耗 {{ item.matchCount }} 种快到期食材
+              </div>
+              <div class="match-ingredients">
+                <el-tag
+                  v-for="ing in item.matchedItems"
+                  :key="ing.id"
+                  size="small"
+                  type="warning"
+                  effect="dark"
+                >
+                  {{ ing.name }}
+                </el-tag>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <CategoryFilter />
 
     <div v-if="filteredRecipes.length === 0" class="empty-state">
@@ -115,6 +165,8 @@ const currentPage = computed({
 })
 
 const weekPlanSummary = computed(() => store.weekPlanSummary)
+const fridgeRecommendations = computed(() => store.recommendedRecipesForFridge)
+const fridgeExpiringCount = computed(() => store.fridgeStats.expiring)
 
 const hasMealsPlanned = computed(() => {
   return weekPlanSummary.value.some(day => day.mealCount > 0)
@@ -135,6 +187,10 @@ function handlePageChange(page) {
 
 function goToMealPlan() {
   router.push('/meal-plan')
+}
+
+function goToRecipe(id) {
+  router.push(`/recipe/${id}`)
 }
 </script>
 
@@ -379,6 +435,131 @@ function goToMealPlan() {
     flex-direction: column;
     gap: 8px;
     align-items: center;
+  }
+
+  .fridge-recommend-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fridge-recommend-section {
+  background: linear-gradient(135deg, #FFF7E6, #FFF0E8);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #FFE4D6;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #3D3D3D;
+}
+
+.fridge-recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.fridge-recommend-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid transparent;
+}
+
+.fridge-recommend-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.15);
+  border-color: #FF6B35;
+}
+
+.card-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: linear-gradient(135deg, #FF6B35, #FF8C42);
+  color: white;
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 0 12px 0 12px;
+  font-weight: 600;
+}
+
+.fridge-recommend-card .card-emoji {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.fridge-recommend-card .card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #3D3D3D;
+  margin-bottom: 6px;
+}
+
+.fridge-recommend-card .card-desc {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-match-info {
+  border-top: 1px dashed #F0F0F0;
+  padding-top: 12px;
+}
+
+.match-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #E6A23C;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.match-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+@media (max-width: 992px) {
+  .fridge-recommend-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .fridge-recommend-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
