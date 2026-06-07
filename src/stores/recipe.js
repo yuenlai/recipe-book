@@ -1243,21 +1243,30 @@ export const useRecipeStore = defineStore('recipe', () => {
 
   function completeTrainingTask(taskId) {
     if (!trainingCompletedTasks.value.includes(taskId)) {
-      trainingCompletedTasks.value.push(taskId)
-      trainingCompletedAt.value[taskId] = new Date().toISOString()
+      trainingCompletedTasks.value = [...trainingCompletedTasks.value, taskId]
+      trainingCompletedAt.value = {
+        ...trainingCompletedAt.value,
+        [taskId]: new Date().toISOString()
+      }
       saveTrainingProgress()
       
-      setTimeout(() => {
-        checkAchievements()
-      }, 100)
+      const newAchievements = checkAchievements()
+      return newAchievements
     }
+    return []
   }
 
   function uncompleteTrainingTask(taskId) {
     const index = trainingCompletedTasks.value.indexOf(taskId)
     if (index > -1) {
-      trainingCompletedTasks.value.splice(index, 1)
-      delete trainingCompletedAt.value[taskId]
+      const newTasks = [...trainingCompletedTasks.value]
+      newTasks.splice(index, 1)
+      trainingCompletedTasks.value = newTasks
+      
+      const newCompletedAt = { ...trainingCompletedAt.value }
+      delete newCompletedAt[taskId]
+      trainingCompletedAt.value = newCompletedAt
+      
       saveTrainingProgress()
     }
   }

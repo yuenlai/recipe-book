@@ -222,6 +222,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRecipeStore } from '../stores/recipe'
+import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 
 const store = useRecipeStore()
@@ -230,12 +231,17 @@ const router = useRouter()
 const activeTab = ref('stages')
 const showResetDialog = ref(false)
 
-const trainingStats = computed(() => store.trainingStats)
-const trainingStagesWithProgress = computed(() => store.trainingStagesWithProgress)
-const skills = computed(() => store.skills)
-const skillsWithProgress = computed(() => store.skillsWithProgress)
-const achievements = computed(() => store.achievements)
-const unlockedAchievements = computed(() => store.unlockedAchievements)
+const {
+  trainingStats,
+  trainingStagesWithProgress,
+  skills,
+  skillsWithProgress,
+  achievements,
+  unlockedAchievements,
+  trainingCompletedTasks,
+  trainingUnlockedAchievements,
+  newlyUnlockedAchievements
+} = storeToRefs(store)
 
 const totalSkills = computed(() => Object.keys(skills.value).length)
 const totalAchievements = computed(() => achievements.value.length)
@@ -310,12 +316,12 @@ function toggleTaskComplete(task) {
     store.uncompleteTrainingTask(task.id)
     ElMessage.success(`已取消"${task.title}"的完成标记`)
   } else {
-    store.completeTrainingTask(task.id)
+    const newAchievements = store.completeTrainingTask(task.id)
     
-    const newAchievements = store.checkAchievements()
-    if (newAchievements.length > 0) {
+    if (newAchievements && newAchievements.length > 0) {
+      const achievementList = achievements.value
       newAchievements.forEach(achId => {
-        const ach = store.achievements.find(a => a.id === achId)
+        const ach = achievementList.find(a => a.id === achId)
         if (ach) {
           ElMessage.success({
             message: `🎉 解锁成就：${ach.name}`,
