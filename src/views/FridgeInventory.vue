@@ -228,7 +228,7 @@
             </el-select>
           </div>
         </el-form-item>
-        <el-form-item label="购入日期" prop="purchaseDate">
+        <el-form-item label="购入日期">
           <el-date-picker
             v-model="formData.purchaseDate"
             type="date"
@@ -266,7 +266,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElForm } from 'element-plus'
 import { useRecipeStore } from '../stores/recipe'
@@ -354,21 +354,29 @@ function handleDelete(item) {
   }).catch(() => {})
 }
 
-function handleSubmit() {
-  formRef.value.validate((valid) => {
-    if (!valid) return
-
-    if (editingItem.value) {
-      store.updateFridgeItem(editingItem.value.id, formData.value)
-      ElMessage.success('修改成功')
-    } else {
-      store.addFridgeItem(formData.value)
-      ElMessage.success('添加成功')
-    }
+async function handleSubmit() {
+  try {
+    await formRef.value.validate()
+    
+    const formCopy = { ...formData.value }
+    const isEditing = !!editingItem.value
+    const editingId = editingItem.value?.id
 
     showAddDialog.value = false
+    
+    if (isEditing) {
+      store.updateFridgeItem(editingId, formCopy)
+      ElMessage.success('修改成功')
+    } else {
+      store.addFridgeItem(formCopy)
+      ElMessage.success('添加成功')
+    }
+    
     resetForm()
-  })
+  } catch (error) {
+    console.error('Form validation error:', error)
+    ElMessage.error('请填写完整信息')
+  }
 }
 
 function handleClearExpired() {

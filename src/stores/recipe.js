@@ -787,7 +787,7 @@ export const useRecipeStore = defineStore('recipe', () => {
     }
   }
 
-  const fridgeInventory = ref(JSON.parse(localStorage.getItem('fridgeInventory') || '[]'))
+  const fridgeInventory = ref([])
 
   function getDaysUntilExpiry(expiryDate) {
     const today = new Date()
@@ -885,44 +885,34 @@ export const useRecipeStore = defineStore('recipe', () => {
       expiryDate: item.expiryDate,
       note: item.note || ''
     }
-    fridgeInventory.value.push(newItem)
-    saveFridgeInventory()
+    fridgeInventory.value = [...fridgeInventory.value, newItem]
     return newItem
   }
 
   function updateFridgeItem(id, updates) {
     const index = fridgeInventory.value.findIndex(item => item.id === id)
     if (index !== -1) {
-      fridgeInventory.value[index] = {
-        ...fridgeInventory.value[index],
+      const newInventory = [...fridgeInventory.value]
+      newInventory[index] = {
+        ...newInventory[index],
         ...updates
       }
-      saveFridgeInventory()
+      fridgeInventory.value = newInventory
     }
   }
 
   function removeFridgeItem(id) {
-    const index = fridgeInventory.value.findIndex(item => item.id === id)
-    if (index !== -1) {
-      fridgeInventory.value.splice(index, 1)
-      saveFridgeInventory()
-    }
+    fridgeInventory.value = fridgeInventory.value.filter(item => item.id !== id)
   }
 
   function clearFridgeInventory() {
     fridgeInventory.value = []
-    saveFridgeInventory()
   }
 
   function removeExpiredItems() {
     fridgeInventory.value = fridgeInventory.value.filter(
       item => getExpiryStatus(item.expiryDate).status !== 'expired'
     )
-    saveFridgeInventory()
-  }
-
-  function saveFridgeInventory() {
-    localStorage.setItem('fridgeInventory', JSON.stringify(fridgeInventory.value))
   }
 
   const recommendedRecipesForFridge = computed(() => {
