@@ -24,6 +24,11 @@
           <span>聚餐</span>
         </router-link>
 
+        <router-link to="/holiday-menus" class="nav-link" active-class="active">
+          <el-icon><Present /></el-icon>
+          <span>节日</span>
+        </router-link>
+
         <router-link to="/shopping-list" class="nav-link" active-class="active">
           <el-badge :value="shoppingListCount" :hidden="shoppingListCount === 0" class="badge">
             <el-icon><ShoppingCart /></el-icon>

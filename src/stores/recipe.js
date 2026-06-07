@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { recipes as allRecipes, rawRecipes } from '../data/recipes'
 import { getCategory, parseAmount, formatAmount, categoryOrder, categoryEmojis } from '../data/ingredientCategories'
+import { HOLIDAY_MENUS, HOLIDAY_TYPES } from '../data/holidayMenus'
 
 const TASTE_PREFERENCES = [
   { value: 'all', label: '不限口味', emoji: '🍽️' },
@@ -962,6 +963,173 @@ export const useRecipeStore = defineStore('recipe', () => {
     }
   }
 
+  const holidayMenus = ref(HOLIDAY_MENUS)
+  const holidayMenuTypes = ref(HOLIDAY_TYPES)
+  const selectedHolidayType = ref('all')
+  const currentHolidayMenu = ref(null)
+  const favoriteHolidayMenus = ref(JSON.parse(localStorage.getItem('favoriteHolidayMenus') || '[]'))
+
+  const filteredHolidayMenus = computed(() => {
+    if (selectedHolidayType.value === 'all') {
+      return holidayMenus.value
+    }
+    return holidayMenus.value.filter(menu => menu.type === selectedHolidayType.value)
+  })
+
+  const holidayMenusWithRecipes = computed(() => {
+    return filteredHolidayMenus.value.map(menu => ({
+      ...menu,
+      recipes: menu.recipeIds.map(id => recipes.value.find(r => r.id === id)).filter(Boolean)
+    }))
+  })
+
+  const favoriteHolidayMenusWithRecipes = computed(() => {
+    return holidayMenus.value
+      .filter(menu => favoriteHolidayMenus.value.includes(menu.id))
+      .map(menu => ({
+        ...menu,
+        recipes: menu.recipeIds.map(id => recipes.value.find(r => r.id === id)).filter(Boolean)
+      }))
+  })
+
+  function getHolidayMenuById(menuId) {
+    const menu = holidayMenus.value.find(m => m.id === menuId)
+    if (!menu) return null
+    return {
+      ...menu,
+      recipes: menu.recipeIds.map(id => recipes.value.find(r => r.id === id)).filter(Boolean)
+    }
+  }
+
+  function setHolidayType(type) {
+    selectedHolidayType.value = type
+  }
+
+  function setCurrentHolidayMenu(menuId) {
+    currentHolidayMenu.value = menuId ? getHolidayMenuById(menuId) : null
+  }
+
+  function toggleHolidayMenuFavorite(menuId) {
+    const index = favoriteHolidayMenus.value.indexOf(menuId)
+    if (index === -1) {
+      favoriteHolidayMenus.value.push(menuId)
+    } else {
+      favoriteHolidayMenus.value.splice(index, 1)
+    }
+    localStorage.setItem('favoriteHolidayMenus', JSON.stringify(favoriteHolidayMenus.value))
+  }
+
+  function isHolidayMenuFavorite(menuId) {
+    return favoriteHolidayMenus.value.includes(menuId)
+  }
+
+  function addHolidayMenuToFavorites(menuId) {
+    const menu = getHolidayMenuById(menuId)
+    if (!menu) return
+    menu.recipes.forEach(recipe => {
+      if (!favorites.value.includes(recipe.id)) {
+        favorites.value.push(recipe.id)
+      }
+    })
+    localStorage.setItem('recipeFavorites', JSON.stringify(favorites.value))
+  }
+
+  function addHolidayMenuToShoppingList(menuId) {
+    const menu = getHolidayMenuById(menuId)
+    if (!menu) return
+    const recipeIds = menu.recipes.map(r => r.id)
+    addRecipesToShoppingList(recipeIds)
+  }
+
+  function getHolidayMenuStats(menuId) {
+    const menu = getHolidayMenuById(menuId)
+    if (!menu) return null
+
+    const totalPrepTime = menu.recipes.reduce((sum, r) => sum + r.prepTime, 0)
+    const totalCookTime = menu.recipes.reduce((sum, r) => sum + r.cookTime, 0)
+    const totalServings = menu.recipes.reduce((sum, r) => sum + r.servings, 0)
+
+    const ingredientMap = {}
+    menu.recipes.forEach(recipe => {
+      recipe.ingredients.forEach(ing => {
+        const key = ing.name
+        const parsed = parseAmount(ing.amount)
+        
+        if (!ingredientMap[key]) {
+          ingredientMap[key] = {
+            name: ing.name,
+            totalValue: parsed.value,
+            unit: parsed.unit,
+            category: getCategory(ing.name),
+            notes: [],
+            fromRecipes: []
+          }
+        } else {
+          if (parsed.value !== null && ingredientMap[key].totalValue !== null) {
+            if (parsed.unit === ingredientMap[key].unit) {
+              ingredientMap[key].totalValue += parsed.value
+            } else {
+              ingredientMap[key].totalValue = null
+              ingredientMap[key].unit = '请参考各食谱用量'
+            }
+          } else {
+            ingredientMap[key].totalValue = null
+          }
+        }
+        
+        if (ing.note && !ingredientMap[key].notes.includes(ing.note)) {
+          ingredientMap[key].notes.push(ing.note)
+        }
+        if (!ingredientMap[key].fromRecipes.includes(recipe.name)) {
+          ingredientMap[key].fromRecipes.push(recipe.name)
+        }
+      })
+    })
+
+    const ingredientsList = Object.values(ingredientMap)
+    const groups = {}
+    categoryOrder.forEach(cat => { groups[cat] = [] })
+    ingredientsList.forEach(ing => {
+      if (!groups[ing.category]) groups[ing.category] = []
+      groups[ing.category].push({
+        ...ing,
+        displayAmount: formatAmount(ing.totalValue, ing.unit)
+      })
+    })
+
+    const groupedIngredients = []
+    categoryOrder.forEach(cat => {
+      if (groups[cat] && groups[cat].length > 0) {
+        groupedIngredients.push({
+          category: cat,
+          emoji: categoryEmojis[cat] || '📦',
+          items: groups[cat].sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+        })
+      }
+    })
+
+    Object.keys(groups).forEach(cat => {
+      if (!categoryOrder.includes(cat) && groups[cat].length > 0) {
+        groupedIngredients.push({
+          category: cat,
+          emoji: categoryEmojis[cat] || '📦',
+          items: groups[cat].sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+        })
+      }
+    })
+
+    return {
+      totalPrepTime,
+      totalCookTime,
+      totalTime: totalPrepTime + totalCookTime,
+      totalServings,
+      recipeCount: menu.recipes.length,
+      ingredientCount: ingredientsList.length,
+      ingredients: ingredientsList,
+      groupedIngredients
+    }
+  }
+
   return {
     recipes,
     favorites,
@@ -1045,7 +1213,23 @@ export const useRecipeStore = defineStore('recipe', () => {
     clearFridgeInventory,
     removeExpiredItems,
     getExpiryStatus,
-    useFridgeIngredient
+    useFridgeIngredient,
+    holidayMenus,
+    holidayMenuTypes,
+    selectedHolidayType,
+    currentHolidayMenu,
+    favoriteHolidayMenus,
+    filteredHolidayMenus,
+    holidayMenusWithRecipes,
+    favoriteHolidayMenusWithRecipes,
+    getHolidayMenuById,
+    setHolidayType,
+    setCurrentHolidayMenu,
+    toggleHolidayMenuFavorite,
+    isHolidayMenuFavorite,
+    addHolidayMenuToFavorites,
+    addHolidayMenuToShoppingList,
+    getHolidayMenuStats
   }
 }, {
   persist: {
