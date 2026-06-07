@@ -236,8 +236,22 @@ export const useRecipeStore = defineStore('recipe', () => {
       ...timer,
       id: Date.now() + Math.random(),
       isRunning: false,
-      remaining: timer.duration,
-      startedAt: null
+      remaining: timer.remaining !== undefined ? timer.remaining : timer.duration,
+      startedAt: null,
+      completed: timer.completed || false,
+      skipped: timer.skipped || false
+    })
+  }
+
+  function addCompletedTimer(timer) {
+    timers.value.push({
+      ...timer,
+      id: Date.now() + Math.random(),
+      isRunning: false,
+      remaining: 0,
+      startedAt: null,
+      completed: true,
+      skipped: timer.skipped || false
     })
   }
 
@@ -272,6 +286,11 @@ export const useRecipeStore = defineStore('recipe', () => {
       timer.remaining = timer.duration
       timer.isRunning = false
       timer.startedAt = null
+      timer.completed = false
+      timer.skipped = false
+      if (timer.actualDuration !== undefined) {
+        timer.actualDuration = 0
+      }
     }
   }
 
@@ -501,6 +520,7 @@ export const useRecipeStore = defineStore('recipe', () => {
     setSearch,
     setPage,
     addTimer,
+    addCompletedTimer,
     removeTimer,
     startTimer,
     pauseTimer,

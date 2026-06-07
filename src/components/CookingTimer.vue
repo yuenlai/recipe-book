@@ -1,5 +1,5 @@
 <template>
-  <div class="cooking-timer">
+  <div :class="['cooking-timer', { completed, skipped }]">
     <div class="timer-display">
       <svg class="timer-ring" viewBox="0 0 100 100">
         <circle
@@ -12,6 +12,7 @@
         />
         <circle
           class="ring-progress"
+          :class="{ completed, skipped }"
           cx="50"
           cy="50"
           r="45"
@@ -23,31 +24,44 @@
         />
       </svg>
       <div class="timer-info">
-        <span class="timer-time">{{ formattedTime }}</span>
-        <span class="timer-label">{{ label }}</span>
+        <span class="timer-time">{{ displayTime }}</span>
+        <span class="timer-label">{{ displayLabel }}</span>
+        <div v-if="completed" class="status-badge success">
+          <el-icon><Check /></el-icon> 已完成
+        </div>
+        <div v-else-if="skipped" class="status-badge warning">
+          <el-icon><Warning /></el-icon> 已跳过
+        </div>
       </div>
     </div>
 
     <div class="timer-controls">
-      <el-button
-        v-if="!isRunning"
-        type="success"
-        circle
-        @click="start"
-      >
-        <el-icon><VideoPlay /></el-icon>
-      </el-button>
-      <el-button
-        v-else
-        type="warning"
-        circle
-        @click="pause"
-      >
-        <el-icon><VideoPause /></el-icon>
-      </el-button>
-      <el-button type="info" circle @click="reset">
-        <el-icon><RefreshRight /></el-icon>
-      </el-button>
+      <template v-if="!completed && !skipped">
+        <el-button
+          v-if="!isRunning"
+          type="success"
+          circle
+          @click="start"
+        >
+          <el-icon><VideoPlay /></el-icon>
+        </el-button>
+        <el-button
+          v-else
+          type="warning"
+          circle
+          @click="pause"
+        >
+          <el-icon><VideoPause /></el-icon>
+        </el-button>
+        <el-button type="info" circle @click="reset">
+          <el-icon><RefreshRight /></el-icon>
+        </el-button>
+      </template>
+      <template v-else>
+        <el-button type="info" circle @click="reset">
+          <el-icon><RefreshRight /></el-icon>
+        </el-button>
+      </template>
       <el-button type="danger" circle @click="remove">
         <el-icon><Delete /></el-icon>
       </el-button>
@@ -83,6 +97,14 @@ const props = defineProps({
   startedAt: {
     type: Number,
     default: null
+  },
+  completed: {
+    type: Boolean,
+    default: false
+  },
+  skipped: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -99,6 +121,20 @@ const formattedTime = computed(() => {
   const mins = Math.floor(localRemaining.value / 60)
   const secs = Math.floor(localRemaining.value % 60)
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+})
+
+const displayTime = computed(() => {
+  if (props.completed) {
+    return '✓ 完成'
+  }
+  if (props.skipped) {
+    return '⏭ 跳过'
+  }
+  return formattedTime.value
+})
+
+const displayLabel = computed(() => {
+  return props.label
 })
 
 watch(() => props.remaining, (val) => {
@@ -255,5 +291,52 @@ onUnmounted(() => {
 .timer-controls {
   display: flex;
   gap: 8px;
+}
+
+.cooking-timer.completed {
+  border: 2px solid #4CAF50;
+  background: linear-gradient(135deg, #F1F8E9 0%, #E8F5E9 100%);
+}
+
+.cooking-timer.skipped {
+  border: 2px solid #FF9800;
+  background: linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%);
+}
+
+.ring-progress.completed {
+  stroke: #4CAF50;
+}
+
+.ring-progress.skipped {
+  stroke: #FF9800;
+}
+
+.completed .timer-time {
+  color: #4CAF50;
+}
+
+.skipped .timer-time {
+  color: #FF9800;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.status-badge.success {
+  background: #4CAF50;
+  color: white;
+}
+
+.status-badge.warning {
+  background: #FF9800;
+  color: white;
 }
 </style>

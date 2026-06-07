@@ -169,10 +169,14 @@ const isFinished = ref(false)
 const timerRunning = ref(false)
 const timerFinished = ref(false)
 const timerRemaining = ref(0)
+const timerStartRemaining = ref(0)
 let timerInterval = null
 
 const showTip = ref(false)
 const tipMessage = ref('')
+
+const recordedStepIndices = ref(new Set())
+const stepTimerActualDuration = ref({})
 
 const totalSteps = computed(() => recipe.value?.steps?.length || 0)
 
@@ -223,6 +227,7 @@ function startTimer() {
   if (timerRemaining.value <= 0) return
   timerRunning.value = true
   timerFinished.value = false
+  timerStartRemaining.value = timerRemaining.value
 
   const startTime = Date.now()
   const startRemaining = timerRemaining.value
@@ -294,13 +299,57 @@ function speak(text) {
   }
 }
 
-function nextStep() {
+function recordCurrentStepTimer(skipped = false) {
+  const stepIdx = currentStepIndex.value
+  if (recordedStepIndices.value.has(stepIdx)) {
+    return
+  }
+
+  const step = currentStep.value
+  if (!step) return
+
+  const actualDuration = stepTimerActualDuration.value[stepIdx] !== undefined
+    ? stepTimerActualDuration.value[stepIdx]
+    : (timerStartRemaining.value > 0 ? timerStartRemaining.value - timerRemaining.value : 0)
+
+  const label = skipped
+    ? `${recipe.value.name} - 步骤${stepIdx + 1} (已跳过)`
+    : `${recipe.value.name} - 步骤${stepIdx + 1}`
+
+  if (timerFinished.value || skipped) {
+    store.addCompletedTimer({
+      label,
+      duration: step.duration,
+      recipeId: recipe.value.id,
+      skipped,
+      actualDuration
+    })
+  } else if (actualDuration > 0) {
+    store.addTimer({
+      label,
+      duration: step.duration,
+      remaining: Math.max(0, step.duration - actualDuration),
+      recipeId: recipe.value.id,
+      skipped,
+      actualDuration
+    })
+  } else {
+    store.addTimer({
+      label,
+      duration: step.duration,
+      recipeId: recipe.value.id,
+      skipped,
+      actualDuration: 0
+    })
+  }
+
+  recordedStepIndices.value.add(stepIdx)
+  stepTimerActualDuration.value[stepIdx] = actualDuration
+}
+
+function advanceStep(skipped = false) {
   stopTimer()
-  store.addTimer({
-    label: `${recipe.value.name} - 步骤${currentStepIndex.value + 1}`,
-    duration: currentStep.value.duration,
-    recipeId: recipe.value.id
-  })
+  recordCurrentStepTimer(skipped)
 
   if (currentStepIndex.value >= totalSteps.value - 1) {
     isFinished.value = true
@@ -318,9 +367,12 @@ function nextStep() {
   }
 }
 
+function nextStep() {
+  advanceStep(false)
+}
+
 function skipStep() {
-  stopTimer()
-  nextStep()
+  advanceStep(true)
 }
 
 function prevStep() {
@@ -328,6 +380,18 @@ function prevStep() {
     stopTimer()
     currentStepIndex.value--
     resetStepTimer()
+
+    const stepIdx = currentStepIndex.value
+    if (stepTimerActualDuration.value[stepIdx] !== undefined) {
+      const step = currentStep.value
+      if (step) {
+        timerRemaining.value = Math.max(0, step.duration - stepTimerActualDuration.value[stepIdx])
+        if (timerRemaining.value === 0) {
+          timerFinished.value = true
+        }
+      }
+    }
+
     speak(currentStep.value?.description)
   }
 }
@@ -352,20 +416,27 @@ function goBack() {
   router.push('/')
 }
 
-watch(() => route.params.id, () => {
+function resetAllState() {
   currentStepIndex.value = 0
   isStarted.value = false
   isFinished.value = false
+  timerRunning.value = false
+  timerFinished.value = false
+  timerStartRemaining.value = 0
+  recordedStepIndices.value = new Set()
+  stepTimerActualDuration.value = {}
   stopTimer()
   if (currentStep.value) {
     timerRemaining.value = currentStep.value.duration
   }
+}
+
+watch(() => route.params.id, () => {
+  resetAllState()
 })
 
 onMounted(() => {
-  if (currentStep.value) {
-    timerRemaining.value = currentStep.value.duration
-  }
+  resetAllState()
 })
 
 onUnmounted(() => {
