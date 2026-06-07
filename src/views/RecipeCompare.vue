@@ -215,8 +215,9 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRecipeStore } from '../stores/recipe'
-import { Timer, Dish, Clock, StarFilled, User, ShoppingCart, Bowl, Delete, Plus, Close } from '@element-plus/icons-vue'
+import { Timer, Dish, Clock, StarFilled, User, ShoppingCart, Bowl, Delete, Plus, Close, Check } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const store = useRecipeStore()
@@ -264,12 +265,41 @@ function isEasiest(recipe) {
   return recipe.id === easiestRecipe.value.id && compareRecipeObjects.value.length > 1
 }
 
-function removeRecipe(recipeId) {
-  store.removeFromCompare(recipeId)
+async function removeRecipe(recipeId) {
+  const recipe = store.getRecipeById(recipeId)
+  try {
+    await ElMessageBox.confirm(
+      `确定要将「${recipe?.name || '此食谱'}」从对比中移除吗？`,
+      '移除确认',
+      {
+        confirmButtonText: '确定移除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    store.removeFromCompare(recipeId)
+    ElMessage.success('已从对比中移除')
+  } catch {
+    // 用户取消，不做处理
+  }
 }
 
-function clearCompare() {
-  store.clearCompare()
+async function clearCompare() {
+  try {
+    await ElMessageBox.confirm(
+      '确定要清空所有对比的食谱吗？此操作不可恢复。',
+      '清空确认',
+      {
+        confirmButtonText: '确定清空',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    store.clearCompare()
+    ElMessage.success('已清空所有对比')
+  } catch {
+    // 用户取消，不做处理
+  }
 }
 
 function goHome() {
@@ -442,34 +472,62 @@ function startCooking(recipeId) {
   justify-content: center;
 }
 
+.tags-container .el-tag {
+  font-weight: 500;
+  padding: 4px 10px;
+  transition: all 0.2s ease;
+}
+
+.tags-container .el-tag:hover {
+  transform: translateY(-1px);
+}
+
 .ingredients-list {
   text-align: left;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .ingredient-item {
   display: flex;
   justify-content: space-between;
-  padding: 6px 12px;
-  background: #fafafa;
-  border-radius: 6px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  border-radius: 8px;
   margin-bottom: 6px;
+  border-left: 3px solid #FF6B35;
+  transition: all 0.2s ease;
+}
+
+.ingredient-item:hover {
+  background: linear-gradient(135deg, #FFF5EC 0%, #FFE8D6 100%);
+  transform: translateX(2px);
 }
 
 .ingredient-name {
   color: #3D3D3D;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .ingredient-amount {
-  color: #999;
+  color: #FF6B35;
   font-size: 13px;
+  font-weight: 500;
+  background: rgba(255, 107, 53, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
 .more-ingredients {
   color: #FF6B35;
   font-size: 13px;
   text-align: center;
-  padding: 4px;
+  padding: 8px;
+  font-weight: 500;
+  background: rgba(255, 107, 53, 0.05);
+  border-radius: 8px;
+  margin-top: 4px;
 }
 
 .ingredients-row td {
@@ -480,6 +538,16 @@ function startCooking(recipeId) {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.action-buttons .el-button {
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.action-buttons .el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .comparison-summary {

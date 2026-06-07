@@ -62,15 +62,29 @@
       <StepList :steps="recipe.steps" />
 
       <div class="detail-extra-actions">
+        <div class="compare-info" v-if="compareCount > 0">
+          <span class="compare-count-label">已选 {{ compareCount }}/6 道菜</span>
+          <div class="compare-recipe-previews">
+            <span
+              v-for="r in compareRecipeObjects"
+              :key="r.id"
+              class="recipe-preview"
+              :style="{ backgroundColor: r.coverColor }"
+              :title="r.name"
+            >
+              {{ r.emoji }}
+            </span>
+          </div>
+        </div>
         <el-button
           :type="isInCompare(recipe.id) ? 'warning' : 'info'"
           size="large"
           @click="toggleCompare"
           :disabled="!isInCompare(recipe.id) && compareCount >= 6"
+          class="compare-main-btn"
         >
           <el-icon><DataLine /></el-icon>
-          {{ isInCompare(recipe.id) ? '已加入对比' : '加入对比' }}
-          <span v-if="compareCount > 0" class="compare-badge">{{ compareCount }}/6</span>
+          {{ isInCompare(recipe.id) ? '✓ 已加入对比' : '＋ 加入对比' }}
         </el-button>
         <el-button
           type="primary"
@@ -79,7 +93,7 @@
           v-if="compareCount > 0"
         >
           <el-icon><DataLine /></el-icon>
-          查看对比
+          查看对比结果
         </el-button>
       </div>
 
@@ -150,6 +164,7 @@ function enterCookingMode() {
 }
 
 const compareCount = computed(() => store.compareCount)
+const compareRecipeObjects = computed(() => store.compareRecipeObjects)
 
 function isInCompare(recipeId) {
   return store.isInCompare(recipeId)
@@ -279,20 +294,67 @@ function goToCompare() {
 
 .detail-extra-actions {
   display: flex;
-  justify-content: center;
-  gap: 12px;
-  padding: 20px 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0;
   border-top: 1px solid #F0F0F0;
   margin-top: 24px;
-  flex-wrap: wrap;
+  background: linear-gradient(180deg, #FFFDFB 0%, #FFFFFF 100%);
+  border-radius: 16px;
 }
 
-.compare-badge {
-  background: rgba(255, 255, 255, 0.3);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  margin-left: 6px;
+.compare-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.compare-count-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.compare-recipe-previews {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.recipe-preview {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.recipe-preview:hover {
+  transform: scale(1.15);
+}
+
+.compare-main-btn {
+  min-width: 180px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.compare-main-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.compare-main-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .timer-action {

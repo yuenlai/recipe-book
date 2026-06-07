@@ -8,11 +8,16 @@
         circle
         size="small"
         :type="isInCompare(recipe.id) ? 'warning' : 'info'"
+        :effect="isInCompare(recipe.id) ? 'dark' : 'light'"
         @click.stop="toggleCompare"
         :disabled="!isInCompare(recipe.id) && compareCount >= 6"
+        :title="isInCompare(recipe.id) ? '点击从对比中移除' : '点击加入对比'"
       >
         <el-icon><DataLine /></el-icon>
       </el-button>
+      <div v-if="isInCompare(recipe.id)" class="compare-indicator">
+        <span>已对比</span>
+      </div>
     </div>
 
     <div class="card-body">
@@ -132,6 +137,39 @@ function toggleCompare() {
   top: 10px;
   right: 50px;
   background: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+}
+
+.card-compare:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.card-compare:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.compare-indicator {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(255, 152, 0, 0.95);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 .card-body {
