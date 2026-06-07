@@ -3,6 +3,16 @@
     <div class="card-cover" :style="{ backgroundColor: recipe.coverColor }">
       <span class="card-emoji">{{ recipe.emoji }}</span>
       <FavoriteButton :recipeId="recipe.id" class="card-favorite" @click.stop />
+      <el-button
+        class="card-compare"
+        circle
+        size="small"
+        :type="isInCompare(recipe.id) ? 'warning' : 'info'"
+        @click.stop="toggleCompare"
+        :disabled="!isInCompare(recipe.id) && compareCount >= 6"
+      >
+        <el-icon><DataLine /></el-icon>
+      </el-button>
     </div>
 
     <div class="card-body">
@@ -37,7 +47,10 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { useRecipeStore } from '../stores/recipe'
 import FavoriteButton from './FavoriteButton.vue'
+import { DataLine } from '@element-plus/icons-vue'
 
 const props = defineProps({
   recipe: {
@@ -47,8 +60,10 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const store = useRecipeStore()
 
 const totalTime = computed(() => props.recipe.prepTime + props.recipe.cookTime)
+const compareCount = computed(() => store.compareCount)
 
 const difficultyType = computed(() => {
   const map = { '简单': 'success', '中等': 'warning', '困难': 'danger' }
@@ -57,6 +72,24 @@ const difficultyType = computed(() => {
 
 function goToDetail() {
   router.push(`/recipe/${props.recipe.id}`)
+}
+
+function isInCompare(recipeId) {
+  return store.isInCompare(recipeId)
+}
+
+function toggleCompare() {
+  if (store.isInCompare(props.recipe.id)) {
+    store.removeFromCompare(props.recipe.id)
+    ElMessage.success('已从对比中移除')
+  } else {
+    if (store.compareCount >= 6) {
+      ElMessage.warning('最多只能对比6个食谱')
+      return
+    }
+    store.addToCompare(props.recipe.id)
+    ElMessage.success('已加入对比')
+  }
 }
 </script>
 
@@ -92,6 +125,13 @@ function goToDetail() {
   position: absolute;
   top: 10px;
   right: 10px;
+}
+
+.card-compare {
+  position: absolute;
+  top: 10px;
+  right: 50px;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .card-body {

@@ -61,6 +61,28 @@
       <IngredientList :ingredients="recipe.ingredients" />
       <StepList :steps="recipe.steps" />
 
+      <div class="detail-extra-actions">
+        <el-button
+          :type="isInCompare(recipe.id) ? 'warning' : 'info'"
+          size="large"
+          @click="toggleCompare"
+          :disabled="!isInCompare(recipe.id) && compareCount >= 6"
+        >
+          <el-icon><DataLine /></el-icon>
+          {{ isInCompare(recipe.id) ? '已加入对比' : '加入对比' }}
+          <span v-if="compareCount > 0" class="compare-badge">{{ compareCount }}/6</span>
+        </el-button>
+        <el-button
+          type="primary"
+          size="large"
+          @click="goToCompare"
+          v-if="compareCount > 0"
+        >
+          <el-icon><DataLine /></el-icon>
+          查看对比
+        </el-button>
+      </div>
+
       <div class="timer-action">
         <el-button type="success" size="large" @click="enterCookingMode">
           <el-icon><VideoPlay /></el-icon>
@@ -84,10 +106,12 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useRecipeStore } from '../stores/recipe'
 import FavoriteButton from '../components/FavoriteButton.vue'
 import IngredientList from '../components/IngredientList.vue'
 import StepList from '../components/StepList.vue'
+import { DataLine } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -123,6 +147,31 @@ function startCookTimer() {
 function enterCookingMode() {
   if (!recipe.value) return
   router.push(`/recipe/${recipe.value.id}/cooking`)
+}
+
+const compareCount = computed(() => store.compareCount)
+
+function isInCompare(recipeId) {
+  return store.isInCompare(recipeId)
+}
+
+function toggleCompare() {
+  if (!recipe.value) return
+  if (store.isInCompare(recipe.value.id)) {
+    store.removeFromCompare(recipe.value.id)
+    ElMessage.success('已从对比中移除')
+  } else {
+    if (store.compareCount >= 6) {
+      ElMessage.warning('最多只能对比6个食谱')
+      return
+    }
+    store.addToCompare(recipe.value.id)
+    ElMessage.success('已加入对比')
+  }
+}
+
+function goToCompare() {
+  router.push('/compare')
 }
 </script>
 
@@ -228,11 +277,29 @@ function enterCookingMode() {
   margin-bottom: 24px;
 }
 
+.detail-extra-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 0;
+  border-top: 1px solid #F0F0F0;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.compare-badge {
+  background: rgba(255, 255, 255, 0.3);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  margin-left: 6px;
+}
+
 .timer-action {
   text-align: center;
   padding: 24px 0;
   border-top: 1px solid #F0F0F0;
-  margin-top: 24px;
+  margin-top: 0;
 }
 
 .not-found {

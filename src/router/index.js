@@ -10,6 +10,7 @@ import DinnerParty from '../views/DinnerParty.vue'
 import FridgeInventory from '../views/FridgeInventory.vue'
 import HolidayMenus from '../views/HolidayMenus.vue'
 import TrainingCamp from '../views/TrainingCamp.vue'
+import RecipeCompare from '../views/RecipeCompare.vue'
 
 const routes = [
   {
@@ -68,6 +69,11 @@ const routes = [
     path: '/training-camp',
     name: 'TrainingCamp',
     component: TrainingCamp
+  },
+  {
+    path: '/compare',
+    name: 'RecipeCompare',
+    component: RecipeCompare
   }
 ]
 

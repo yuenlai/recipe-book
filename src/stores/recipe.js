@@ -123,6 +123,8 @@ export const useRecipeStore = defineStore('recipe', () => {
   const trainingCompletedAt = ref(JSON.parse(localStorage.getItem('trainingCompletedAt') || '{}'))
   const trainingUnlockedAchievements = ref(JSON.parse(localStorage.getItem('trainingUnlockedAchievements') || '[]'))
 
+  const compareRecipes = ref(JSON.parse(localStorage.getItem('compareRecipes') || '[]'))
+
   const filteredRecipes = computed(() => {
     let result = recipes.value
 
@@ -154,6 +156,14 @@ export const useRecipeStore = defineStore('recipe', () => {
   const favoriteRecipes = computed(() => {
     return recipes.value.filter(r => favorites.value.includes(r.id))
   })
+
+  const compareRecipeObjects = computed(() => {
+    return compareRecipes.value
+      .map(id => recipes.value.find(r => r.id === id))
+      .filter(Boolean)
+  })
+
+  const compareCount = computed(() => compareRecipes.value.length)
 
   const favoriteCount = computed(() => favorites.value.length)
 
@@ -284,6 +294,34 @@ export const useRecipeStore = defineStore('recipe', () => {
 
   function isFavorite(recipeId) {
     return favorites.value.includes(recipeId)
+  }
+
+  function addToCompare(recipeId) {
+    if (!compareRecipes.value.includes(recipeId) && compareRecipes.value.length < 6) {
+      compareRecipes.value.push(recipeId)
+      saveCompareRecipes()
+    }
+  }
+
+  function removeFromCompare(recipeId) {
+    const index = compareRecipes.value.indexOf(recipeId)
+    if (index > -1) {
+      compareRecipes.value.splice(index, 1)
+      saveCompareRecipes()
+    }
+  }
+
+  function isInCompare(recipeId) {
+    return compareRecipes.value.includes(recipeId)
+  }
+
+  function clearCompare() {
+    compareRecipes.value = []
+    saveCompareRecipes()
+  }
+
+  function saveCompareRecipes() {
+    localStorage.setItem('compareRecipes', JSON.stringify(compareRecipes.value))
   }
 
   function getRecipeById(id) {
@@ -1318,6 +1356,9 @@ export const useRecipeStore = defineStore('recipe', () => {
     totalPages,
     favoriteRecipes,
     favoriteCount,
+    compareRecipes,
+    compareRecipeObjects,
+    compareCount,
     activeTimers,
     shoppingListSelectedRecipes,
     shoppingListSelectedRecipeObjects,
@@ -1340,6 +1381,10 @@ export const useRecipeStore = defineStore('recipe', () => {
     recommendedRecipesForFridge,
     toggleFavorite,
     isFavorite,
+    addToCompare,
+    removeFromCompare,
+    isInCompare,
+    clearCompare,
     getRecipeById,
     setCategory,
     setSearch,
@@ -1432,7 +1477,8 @@ export const useRecipeStore = defineStore('recipe', () => {
       'fridgeInventory',
       'trainingCompletedTasks',
       'trainingCompletedAt',
-      'trainingUnlockedAchievements'
+      'trainingUnlockedAchievements',
+      'compareRecipes'
     ]
   }
 })

@@ -55,6 +55,13 @@
           <span>收藏</span>
         </router-link>
 
+        <router-link to="/compare" class="nav-link" active-class="active">
+          <el-badge :value="compareCount" :hidden="compareCount === 0" class="badge">
+            <el-icon><DataLine /></el-icon>
+          </el-badge>
+          <span>对比</span>
+        </router-link>
+
         <router-link to="/timers" class="nav-link" active-class="active">
           <el-badge :value="timerCount" :hidden="timerCount === 0" class="badge">
             <el-icon><Timer /></el-icon>
@@ -74,6 +81,7 @@
 import { computed } from 'vue'
 import { useRecipeStore } from '../stores/recipe'
 import SearchBar from './SearchBar.vue'
+import { DataLine } from '@element-plus/icons-vue'
 
 const store = useRecipeStore()
 
@@ -86,6 +94,7 @@ const shoppingListCount = computed(() => {
   return store.shoppingListStats.totalItems > 0 ? store.shoppingListStats.totalItems : 0
 })
 const expiringCount = computed(() => store.fridgeStats.expiring)
+const compareCount = computed(() => store.compareCount)
 </script>
 
 <style scoped>
