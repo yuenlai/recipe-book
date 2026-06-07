@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { recipes as allRecipes } from '../data/recipes'
+import { recipes as allRecipes, rawRecipes } from '../data/recipes'
 import { getCategory, parseAmount, formatAmount, categoryOrder, categoryEmojis } from '../data/ingredientCategories'
 
 const DAYS_OF_WEEK = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']

@@ -62,7 +62,11 @@
       <StepList :steps="recipe.steps" />
 
       <div class="timer-action">
-        <el-button type="primary" size="large" @click="startCookTimer">
+        <el-button type="success" size="large" @click="enterCookingMode">
+          <el-icon><VideoPlay /></el-icon>
+          进入做菜流程模式
+        </el-button>
+        <el-button type="primary" size="large" @click="startCookTimer" style="margin-left: 12px;">
           <el-icon><Timer /></el-icon>
           开始烹饪计时 ({{ recipe.cookTime }}分钟)
         </el-button>
@@ -114,6 +118,11 @@ function startCookTimer() {
     recipeId: recipe.value.id
   })
   router.push('/timers')
+}
+
+function enterCookingMode() {
+  if (!recipe.value) return
+  router.push(`/recipe/${recipe.value.id}/cooking`)
 }
 </script>
 

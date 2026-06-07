@@ -5,6 +5,7 @@ import Favorites from '../views/Favorites.vue'
 import TimerPage from '../views/TimerPage.vue'
 import MealPlan from '../views/MealPlan.vue'
 import ShoppingList from '../views/ShoppingList.vue'
+import CookingMode from '../views/CookingMode.vue'
 
 const routes = [
   {
@@ -37,6 +38,12 @@ const routes = [
     path: '/shopping-list',
     name: 'ShoppingList',
     component: ShoppingList
+  },
+  {
+    path: '/recipe/:id/cooking',
+    name: 'CookingMode',
+    component: CookingMode,
+    props: true
   }
 ]
 

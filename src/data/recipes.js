@@ -1,4 +1,65 @@
-export const recipes = [
+function extractDuration(description) {
+  if (!description) return 180
+
+  const hourMatch = description.match(/(\d+(?:\.\d+)?)\s*(?:小时|钟头|h|H)/)
+  if (hourMatch) {
+    return Math.round(parseFloat(hourMatch[1]) * 3600)
+  }
+
+  const minuteRangeMatch = description.match(/(\d+(?:\.\d+)?)\s*[-~至]\s*(\d+(?:\.\d+)?)\s*(?:分钟|分|min|MIN)/)
+  if (minuteRangeMatch) {
+    const min = parseFloat(minuteRangeMatch[1])
+    const max = parseFloat(minuteRangeMatch[2])
+    return Math.round(((min + max) / 2) * 60)
+  }
+
+  const minuteMatch = description.match(/(\d+(?:\.\d+)?)\s*(?:分钟|分|min|MIN)/)
+  if (minuteMatch) {
+    return Math.round(parseFloat(minuteMatch[1]) * 60)
+  }
+
+  const secondRangeMatch = description.match(/(\d+(?:\.\d+)?)\s*[-~至]\s*(\d+(?:\.\d+)?)\s*(?:秒|sec|SEC)/)
+  if (secondRangeMatch) {
+    const min = parseFloat(secondRangeMatch[1])
+    const max = parseFloat(secondRangeMatch[2])
+    return Math.round((min + max) / 2)
+  }
+
+  const secondMatch = description.match(/(\d+(?:\.\d+)?)\s*(?:秒|sec|SEC)/)
+  if (secondMatch) {
+    return Math.round(parseFloat(secondMatch[1]))
+  }
+
+  if (/腌制|腌|静置|醒面|冷藏|浸泡|泡/.test(description)) {
+    return 900
+  }
+  if (/炖煮|炖|煮|焖|蒸|煲/.test(description)) {
+    return 1200
+  }
+  if (/翻炒|炒|煎|炸|爆/.test(description)) {
+    return 180
+  }
+  if (/切|剁|准备|处理|洗|摘/.test(description)) {
+    return 300
+  }
+  if (/调味|调料|汁|酱/.test(description)) {
+    return 120
+  }
+  if (/勾芡|收汁|出锅|装盘|撒/.test(description)) {
+    return 60
+  }
+
+  return 180
+}
+
+function processSteps(steps) {
+  return steps.map(step => ({
+    ...step,
+    duration: extractDuration(step.description + ' ' + (step.tip || ''))
+  }))
+}
+
+export const rawRecipes = [
   {
     id: 1,
     name: '宫保鸡丁',
@@ -667,6 +728,11 @@ export const recipes = [
     tags: ['小吃', '炸物', '聚会']
   }
 ]
+
+export const recipes = rawRecipes.map(recipe => ({
+  ...recipe,
+  steps: processSteps(recipe.steps)
+}))
 
 export const categories = ['全部', '中餐', '西餐', '甜点', '饮品', '小吃']
 
