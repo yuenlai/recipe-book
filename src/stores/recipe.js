@@ -122,34 +122,79 @@ function initializeMealPlan() {
   return plan
 }
 
+function fixMealPlanStructure(plan) {
+  if (!plan || typeof plan !== 'object') {
+    return initializeMealPlan()
+  }
+  const fixed = {}
+  const expectedMeals = ['breakfast', 'lunch', 'dinner']
+  for (const [dateKey, meals] of Object.entries(plan)) {
+    if (!meals || typeof meals !== 'object') {
+      fixed[dateKey] = { breakfast: [], lunch: [], dinner: [] }
+      continue
+    }
+    fixed[dateKey] = {}
+    for (const mealType of expectedMeals) {
+      const recipeIds = meals[mealType]
+      fixed[dateKey][mealType] = Array.isArray(recipeIds) ? recipeIds.filter(id => typeof id === 'number') : []
+    }
+  }
+  const defaultPlan = initializeMealPlan()
+  for (const [dateKey, meals] of Object.entries(defaultPlan)) {
+    if (!fixed[dateKey]) {
+      fixed[dateKey] = meals
+    }
+  }
+  return fixed
+}
+
+function safeParseArray(jsonStr, defaultValue = []) {
+  try {
+    const parsed = JSON.parse(jsonStr)
+    return Array.isArray(parsed) ? parsed : defaultValue
+  } catch {
+    return defaultValue
+  }
+}
+
+function safeParseObject(jsonStr, defaultValue = {}) {
+  try {
+    const parsed = JSON.parse(jsonStr)
+    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : defaultValue
+  } catch {
+    return defaultValue
+  }
+}
+
 export const useRecipeStore = defineStore('recipe', () => {
   const recipes = ref(allRecipesWithBreakfast)
-  const favorites = ref(JSON.parse(localStorage.getItem('recipeFavorites') || '[]'))
+  const favorites = ref(safeParseArray(localStorage.getItem('recipeFavorites') || '[]'))
   const timers = ref([])
   const searchQuery = ref('')
   const selectedCategory = ref('全部')
   const currentPage = ref(1)
   const pageSize = 9
+  const homeScrollPosition = ref(0)
   const weekDates = ref(getWeekDates())
-  const mealPlan = ref(JSON.parse(localStorage.getItem('mealPlan') || 'null') || initializeMealPlan())
-  const shoppingListSelectedRecipes = ref(JSON.parse(localStorage.getItem('shoppingListSelectedRecipes') || '[]'))
-  const shoppingListCheckedItems = ref(JSON.parse(localStorage.getItem('shoppingListCheckedItems') || '{}'))
+  const mealPlan = ref(fixMealPlanStructure(JSON.parse(localStorage.getItem('mealPlan') || 'null')))
+  const shoppingListSelectedRecipes = ref(safeParseArray(localStorage.getItem('shoppingListSelectedRecipes') || '[]'))
+  const shoppingListCheckedItems = ref(safeParseObject(localStorage.getItem('shoppingListCheckedItems') || '{}'))
 
   const dinnerPartyPeople = ref(6)
   const dinnerPartyTaste = ref('all')
   const dinnerPartyPlan = ref(JSON.parse(localStorage.getItem('dinnerPartyPlan') || 'null'))
-  const dinnerPartyHistory = ref(JSON.parse(localStorage.getItem('dinnerPartyHistory') || '[]'))
+  const dinnerPartyHistory = ref(safeParseArray(localStorage.getItem('dinnerPartyHistory') || '[]'))
 
-  const trainingCompletedTasks = ref(JSON.parse(localStorage.getItem('trainingCompletedTasks') || '[]'))
-  const trainingCompletedAt = ref(JSON.parse(localStorage.getItem('trainingCompletedAt') || '{}'))
-  const trainingUnlockedAchievements = ref(JSON.parse(localStorage.getItem('trainingUnlockedAchievements') || '[]'))
+  const trainingCompletedTasks = ref(safeParseArray(localStorage.getItem('trainingCompletedTasks') || '[]'))
+  const trainingCompletedAt = ref(safeParseObject(localStorage.getItem('trainingCompletedAt') || '{}'))
+  const trainingUnlockedAchievements = ref(safeParseArray(localStorage.getItem('trainingUnlockedAchievements') || '[]'))
 
-  const compareRecipes = ref(JSON.parse(localStorage.getItem('compareRecipes') || '[]'))
+  const compareRecipes = ref(safeParseArray(localStorage.getItem('compareRecipes') || '[]'))
 
   const selectedLeftoverCategory = ref('all')
-  const selectedLeftoverIngredients = ref(JSON.parse(localStorage.getItem('selectedLeftoverIngredients') || '[]'))
+  const selectedLeftoverIngredients = ref(safeParseArray(localStorage.getItem('selectedLeftoverIngredients') || '[]'))
 
-  const fatLossCompletedDays = ref(JSON.parse(localStorage.getItem('fatLossCompletedDays') || '[]'))
+  const fatLossCompletedDays = ref(safeParseArray(localStorage.getItem('fatLossCompletedDays') || '[]'))
   const fatLossCurrentWeek = ref(JSON.parse(localStorage.getItem('fatLossCurrentWeek') || 'null'))
 
   const leftoverCategories = computed(() => LEFTOVER_CATEGORIES)
@@ -245,7 +290,8 @@ export const useRecipeStore = defineStore('recipe', () => {
     for (const [dateKey, meals] of Object.entries(mealPlan.value)) {
       result[dateKey] = {}
       for (const [mealType, recipeIds] of Object.entries(meals)) {
-        result[dateKey][mealType] = recipeIds
+        const ids = Array.isArray(recipeIds) ? recipeIds : []
+        result[dateKey][mealType] = ids
           .map(id => recipes.value.find(r => r.id === id))
           .filter(Boolean)
       }
@@ -401,16 +447,26 @@ export const useRecipeStore = defineStore('recipe', () => {
 
   function setCategory(category) {
     selectedCategory.value = category
-    currentPage.value = 1
+    const maxPage = Math.max(1, Math.ceil(filteredRecipes.value.length / pageSize))
+    if (currentPage.value > maxPage) {
+      currentPage.value = maxPage
+    }
   }
 
   function setSearch(query) {
     searchQuery.value = query
-    currentPage.value = 1
+    const maxPage = Math.max(1, Math.ceil(filteredRecipes.value.length / pageSize))
+    if (currentPage.value > maxPage) {
+      currentPage.value = maxPage
+    }
   }
 
   function setPage(page) {
     currentPage.value = page
+  }
+
+  function setScrollPosition(position) {
+    homeScrollPosition.value = position
   }
 
   function addTimer(timer) {
@@ -1501,6 +1557,7 @@ export const useRecipeStore = defineStore('recipe', () => {
     selectedCategory,
     currentPage,
     pageSize,
+    homeScrollPosition,
     weekDates,
     mealPlan,
     mealPlanWithRecipes,
@@ -1543,6 +1600,7 @@ export const useRecipeStore = defineStore('recipe', () => {
     setCategory,
     setSearch,
     setPage,
+    setScrollPosition,
     addTimer,
     addCompletedTimer,
     removeTimer,
@@ -1661,7 +1719,11 @@ export const useRecipeStore = defineStore('recipe', () => {
       'trainingCompletedAt',
       'trainingUnlockedAchievements',
       'compareRecipes',
-      'fatLossCompletedDays'
+      'fatLossCompletedDays',
+      'searchQuery',
+      'selectedCategory',
+      'currentPage',
+      'homeScrollPosition'
     ]
   }
 })

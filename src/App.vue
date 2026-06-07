@@ -2,9 +2,11 @@
   <div class="app-container">
     <Navbar />
     <main class="main-content">
-      <router-view v-slot="{ Component }">
+      <router-view v-slot="{ Component, route }">
         <transition name="fade" mode="out-in">
-          <component :is="Component" />
+          <keep-alive :include="['Home']">
+            <component :is="Component" :key="route.fullPath" />
+          </keep-alive>
         </transition>
       </router-view>
     </main>

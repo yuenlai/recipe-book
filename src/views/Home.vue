@@ -165,11 +165,15 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onActivated, onDeactivated, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRecipeStore } from '../stores/recipe'
 import CategoryFilter from '../components/CategoryFilter.vue'
 import RecipeCard from '../components/RecipeCard.vue'
+
+defineOptions({
+  name: 'Home'
+})
 
 const store = useRecipeStore()
 const router = useRouter()
@@ -200,6 +204,7 @@ const totalWeekTime = computed(() => {
 
 function handlePageChange(page) {
   store.setPage(page)
+  store.setScrollPosition(0)
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -208,8 +213,28 @@ function goToMealPlan() {
 }
 
 function goToRecipe(id) {
+  store.setScrollPosition(window.scrollY)
   router.push(`/recipe/${id}`)
 }
+
+function saveScrollPosition() {
+  store.setScrollPosition(window.scrollY)
+}
+
+function restoreScrollPosition() {
+  nextTick(() => {
+    const scrollPos = store.homeScrollPosition || 0
+    window.scrollTo({ top: scrollPos, behavior: 'auto' })
+  })
+}
+
+onActivated(() => {
+  restoreScrollPosition()
+})
+
+onDeactivated(() => {
+  saveScrollPosition()
+})
 </script>
 
 <style scoped>

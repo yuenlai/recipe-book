@@ -15,11 +15,12 @@
 </template>
 
 <script setup>
+import { storeToRefs } from 'pinia'
 import { useRecipeStore } from '../stores/recipe'
 import { categories } from '../data/recipes'
 
 const store = useRecipeStore()
-const selectedCategory = store.selectedCategory
+const { selectedCategory } = storeToRefs(store)
 
 const categoryEmojis = {
   '全部': '🍽️',
