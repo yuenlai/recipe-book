@@ -294,6 +294,13 @@ export const useRecipeStore = defineStore('recipe', () => {
     }
   }
 
+  function updateTimerRemaining(timerId, remaining) {
+    const timer = timers.value.find(t => t.id === timerId)
+    if (timer) {
+      timer.remaining = remaining
+    }
+  }
+
   const shoppingListSelectedRecipeObjects = computed(() => {
     return shoppingListSelectedRecipes.value
       .map(id => recipes.value.find(r => r.id === id))
@@ -525,6 +532,7 @@ export const useRecipeStore = defineStore('recipe', () => {
     startTimer,
     pauseTimer,
     resetTimer,
+    updateTimerRemaining,
     getDaySummary,
     addRecipeToMeal,
     removeRecipeFromMeal,
@@ -543,5 +551,17 @@ export const useRecipeStore = defineStore('recipe', () => {
     isRecipeSelectedForShopping,
     isIngredientChecked,
     addMealPlanToShoppingList
+  }
+}, {
+  persist: {
+    key: 'recipe-book-store',
+    storage: localStorage,
+    paths: [
+      'timers',
+      'favorites',
+      'mealPlan',
+      'shoppingListSelectedRecipes',
+      'shoppingListCheckedItems'
+    ]
   }
 })

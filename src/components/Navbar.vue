@@ -56,7 +56,7 @@ import SearchBar from './SearchBar.vue'
 const store = useRecipeStore()
 
 const favoriteCount = computed(() => store.favoriteCount)
-const timerCount = computed(() => store.activeTimers.length)
+const timerCount = computed(() => store.timers.length)
 const mealPlanCount = computed(() => {
   return store.weekPlanSummary.reduce((sum, day) => sum + day.mealCount, 0)
 })

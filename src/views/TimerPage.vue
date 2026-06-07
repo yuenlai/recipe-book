@@ -97,10 +97,7 @@ function handleRemove(id) {
 }
 
 function handleUpdateRemaining({ id, remaining }) {
-  const timer = store.timers.find(t => t.id === id)
-  if (timer) {
-    timer.remaining = remaining
-  }
+  store.updateTimerRemaining(id, remaining)
 }
 
 function goHome() {
