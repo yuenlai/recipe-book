@@ -262,6 +262,127 @@ export const useRecipeStore = defineStore('recipe', () => {
     return result
   })
 
+  const CUISINE_KEYWORDS = {
+    '中餐': ['中餐', '中国', '川菜', '湘菜', '粤菜', '鲁菜', '苏菜', '浙菜', '闽菜', '徽菜', '东北菜', '家常菜', '中式'],
+    '西餐': ['西餐', '西式', '法国', '意大利', '意式', '美式', '俄式', '牛排', '意面', '汉堡', '披萨'],
+    '甜点': ['甜点', '甜品', '蛋糕', '饼干', '面包', '布丁', '慕斯', '冰淇淋', '巧克力', '糖果'],
+    '饮品': ['饮品', '饮料', '茶', '咖啡', '果汁', '奶茶', '鸡尾酒', '酒', '汤品', '汤'],
+    '小吃': ['小吃', '零食', '点心', '夜宵', '炸物', '烧烤', '串串', '煎饼', '饺子', '包子']
+  }
+
+  const MAIN_INGREDIENT_KEYWORDS = [
+    '鸡肉', '鸡胸肉', '鸡腿', '鸡翅', '鸡蛋', '猪肉', '五花肉', '瘦肉', '排骨', '牛肉', '牛排', '牛腩',
+    '羊肉', '鱼肉', '鱼', '虾', '虾仁', '螃蟹', '蟹', '海鲜', '鱿鱼', '章鱼', '花甲', '扇贝',
+    '番茄', '西红柿', '土豆', '马铃薯', '胡萝卜', '白菜', '青菜', '生菜', '菠菜', '西兰花', '花椰菜',
+    '黄瓜', '茄子', '辣椒', '青椒', '洋葱', '大蒜', '葱', '姜', '豆腐', '豆皮', '豆芽',
+    '米饭', '大米', '面条', '面粉', '面包', '牛奶', '芝士', '奶酪', '黄油', '奶油'
+  ]
+
+  function detectCuisineFromQuery(query) {
+    if (!query) return null
+    const q = query.toLowerCase()
+    for (const [cuisine, keywords] of Object.entries(CUISINE_KEYWORDS)) {
+      if (keywords.some(kw => q.includes(kw.toLowerCase()))) {
+        return cuisine
+      }
+    }
+    return null
+  }
+
+  function detectMainIngredientFromQuery(query) {
+    if (!query) return []
+    const q = query.toLowerCase()
+    const found = []
+    for (const ing of MAIN_INGREDIENT_KEYWORDS) {
+      if (q.includes(ing.toLowerCase())) {
+        found.push(ing)
+      }
+    }
+    return found
+  }
+
+  function calculateRecipeSimilarity(recipe1, recipe2) {
+    let score = 0
+    if (recipe1.category === recipe2.category) score += 30
+    const ing1 = recipe1.ingredients.map(i => i.name)
+    const ing2 = recipe2.ingredients.map(i => i.name)
+    const commonIng = ing1.filter(i => ing2.some(j => i.includes(j) || j.includes(i)))
+    score += commonIng.length * 15
+    const commonTags = recipe1.tags.filter(t => recipe2.tags.includes(t))
+    score += commonTags.length * 10
+    return score
+  }
+
+  const searchSuggestions = computed(() => {
+    if (filteredRecipes.value.length > 0 || !searchQuery.value.trim()) {
+      return { hasSuggestions: false, similarCuisine: [], sameIngredient: [], favoriteSimilar: [] }
+    }
+
+    const query = searchQuery.value.toLowerCase().trim()
+    const allRecipeList = recipes.value
+
+    const detectedCuisine = detectCuisineFromQuery(query) || selectedCategory.value
+    const detectedIngredients = detectMainIngredientFromQuery(query)
+
+    let similarCuisine = []
+    if (detectedCuisine && detectedCuisine !== '全部') {
+      similarCuisine = allRecipeList
+        .filter(r => r.category === detectedCuisine)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 4)
+    }
+
+    let sameIngredient = []
+    if (detectedIngredients.length > 0) {
+      sameIngredient = allRecipeList
+        .map(r => {
+          const matchCount = r.ingredients.filter(ing =>
+            detectedIngredients.some(di => ing.name.includes(di) || di.includes(ing.name))
+          ).length
+          return { recipe: r, matchCount }
+        })
+        .filter(r => r.matchCount > 0)
+        .sort((a, b) => b.matchCount - a.matchCount)
+        .slice(0, 4)
+        .map(r => r.recipe)
+    }
+
+    let favoriteSimilar = []
+    const favRecipes = favoriteRecipes.value
+    if (favRecipes.length > 0) {
+      const searchTerms = query.split(/\s+/).filter(Boolean)
+      favoriteSimilar = favRecipes
+        .map(r => {
+          let score = 0
+          const text = (r.name + ' ' + r.tags.join(' ') + ' ' + r.ingredients.map(i => i.name).join(' ')).toLowerCase()
+          searchTerms.forEach(term => {
+            if (text.includes(term)) score += 20
+          })
+          score += calculateRecipeSimilarity({ tags: detectedIngredients, category: detectedCuisine, ingredients: [] }, r)
+          return { recipe: r, score }
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 4)
+        .map(r => r.recipe)
+    }
+
+    if (similarCuisine.length === 0 && sameIngredient.length === 0 && favoriteSimilar.length === 0) {
+      similarCuisine = allRecipeList
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 4)
+    }
+
+    return {
+      hasSuggestions: true,
+      query,
+      detectedCuisine,
+      detectedIngredients,
+      similarCuisine,
+      sameIngredient,
+      favoriteSimilar
+    }
+  })
+
   const paginatedRecipes = computed(() => {
     const start = (currentPage.value - 1) * pageSize
     return filteredRecipes.value.slice(start, start + pageSize)
@@ -1603,6 +1724,7 @@ export const useRecipeStore = defineStore('recipe', () => {
     mealPlanWithRecipes,
     weekPlanSummary,
     filteredRecipes,
+    searchSuggestions,
     paginatedRecipes,
     totalPages,
     favoriteRecipes,

@@ -145,7 +145,111 @@
     <CategoryFilter />
 
     <div v-if="filteredRecipes.length === 0" class="empty-state">
-      <el-empty description="没有找到匹配的食谱" />
+      <div v-if="searchSuggestions.hasSuggestions" class="search-suggestions">
+        <div class="empty-header">
+          <div class="empty-icon">🔍</div>
+          <h3>没有找到「{{ searchSuggestions.query }}」相关的食谱</h3>
+          <p class="empty-subtitle">别着急，试试这些推荐吧～</p>
+        </div>
+
+        <div v-if="searchSuggestions.sameIngredient.length > 0" class="suggestion-section">
+          <div class="section-header">
+            <el-icon class="section-icon"><Food /></el-icon>
+            <span class="section-title">相同主食材</span>
+            <el-tag v-if="searchSuggestions.detectedIngredients.length > 0" size="small" type="success" effect="light">
+              {{ searchSuggestions.detectedIngredients.join('、') }}
+            </el-tag>
+          </div>
+          <div class="suggestion-cards">
+            <div
+              v-for="recipe in searchSuggestions.sameIngredient"
+              :key="recipe.id"
+              class="suggestion-card"
+              @click="goToSuggestionRecipe(recipe.id)"
+            >
+              <div class="card-emoji" :style="{ backgroundColor: recipe.coverColor }">
+                {{ recipe.emoji }}
+              </div>
+              <div class="card-info">
+                <div class="card-name">{{ recipe.name }}</div>
+                <div class="card-meta">
+                  <span class="meta-tag">{{ recipe.category }}</span>
+                  <span class="meta-time"><el-icon><Timer /></el-icon>{{ recipe.cookTime }}分钟</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="searchSuggestions.similarCuisine.length > 0" class="suggestion-section">
+          <div class="section-header">
+            <el-icon class="section-icon"><Place /></el-icon>
+            <span class="section-title">相近菜系</span>
+            <el-tag v-if="searchSuggestions.detectedCuisine" size="small" type="warning" effect="light">
+              {{ searchSuggestions.detectedCuisine }}
+            </el-tag>
+          </div>
+          <div class="suggestion-cards">
+            <div
+              v-for="recipe in searchSuggestions.similarCuisine"
+              :key="recipe.id"
+              class="suggestion-card"
+              @click="goToSuggestionRecipe(recipe.id)"
+            >
+              <div class="card-emoji" :style="{ backgroundColor: recipe.coverColor }">
+                {{ recipe.emoji }}
+              </div>
+              <div class="card-info">
+                <div class="card-name">{{ recipe.name }}</div>
+                <div class="card-meta">
+                  <span class="meta-tag">{{ recipe.difficulty }}</span>
+                  <span class="meta-time"><el-icon><Timer /></el-icon>{{ recipe.cookTime }}分钟</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="searchSuggestions.favoriteSimilar.length > 0" class="suggestion-section">
+          <div class="section-header">
+            <el-icon class="section-icon"><StarFilled /></el-icon>
+            <span class="section-title">收藏里的相似菜谱</span>
+            <el-tag size="small" type="danger" effect="light">我的收藏</el-tag>
+          </div>
+          <div class="suggestion-cards">
+            <div
+              v-for="recipe in searchSuggestions.favoriteSimilar"
+              :key="recipe.id"
+              class="suggestion-card"
+              @click="goToSuggestionRecipe(recipe.id)"
+            >
+              <div class="card-emoji" :style="{ backgroundColor: recipe.coverColor }">
+                {{ recipe.emoji }}
+              </div>
+              <div class="card-info">
+                <div class="card-name">{{ recipe.name }}</div>
+                <div class="card-meta">
+                  <span class="meta-tag">{{ recipe.category }}</span>
+                  <span class="meta-time"><el-icon><Timer /></el-icon>{{ recipe.cookTime }}分钟</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-actions">
+          <el-button type="primary" @click="clearSearch">
+            <el-icon><RefreshRight /></el-icon>
+            清除搜索
+          </el-button>
+          <el-button @click="goToFavorites">
+            <el-icon><Star /></el-icon>
+            浏览收藏
+          </el-button>
+        </div>
+      </div>
+
+      <el-empty v-else description="没有找到匹配的食谱" />
     </div>
 
     <div v-else>
@@ -175,7 +279,7 @@
 <script setup>
 import { computed, ref, onActivated, onDeactivated, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { RefreshRight } from '@element-plus/icons-vue'
+import { RefreshRight, Food, Place, StarFilled, Star, Timer } from '@element-plus/icons-vue'
 import { useRecipeStore } from '../stores/recipe'
 import CategoryFilter from '../components/CategoryFilter.vue'
 import RecipeCard from '../components/RecipeCard.vue'
@@ -198,6 +302,7 @@ let toastTimer = null
 let highlightTimer = null
 
 const filteredRecipes = computed(() => store.filteredRecipes)
+const searchSuggestions = computed(() => store.searchSuggestions)
 const paginatedRecipes = computed(() => store.paginatedRecipes)
 const totalPages = computed(() => store.totalPages)
 const currentPage = computed({
@@ -234,6 +339,21 @@ function goToMealPlan() {
 function goToRecipe(id) {
   store.setScrollPosition(window.scrollY)
   router.push(`/recipe/${id}`)
+}
+
+function goToSuggestionRecipe(id) {
+  store.setSearch('')
+  store.setScrollPosition(window.scrollY)
+  router.push(`/recipe/${id}`)
+}
+
+function clearSearch() {
+  store.setSearch('')
+  store.setCategory('全部')
+}
+
+function goToFavorites() {
+  router.push('/favorites')
 }
 
 function saveScrollPosition() {
@@ -903,6 +1023,157 @@ onDeactivated(() => {
 @media (max-width: 600px) {
   .fridge-recommend-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+.search-suggestions {
+  padding: 20px 0;
+}
+
+.empty-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.empty-header .empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.empty-header h3 {
+  font-size: 20px;
+  color: #3D3D3D;
+  margin: 0 0 8px 0;
+  font-weight: 600;
+}
+
+.empty-header .empty-subtitle {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+}
+
+.suggestion-section {
+  margin-bottom: 32px;
+}
+
+.suggestion-section .section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.suggestion-section .section-icon {
+  font-size: 20px;
+  color: #FF6B35;
+}
+
+.suggestion-section .section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #3D3D3D;
+}
+
+.suggestion-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.suggestion-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.suggestion-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.15);
+  border-color: #FF6B35;
+}
+
+.suggestion-card .card-emoji {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.suggestion-card .card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestion-card .card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3D3D3D;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-card .card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #999;
+}
+
+.suggestion-card .meta-tag {
+  background: #F5F5F5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.suggestion-card .meta-time {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+@media (max-width: 992px) {
+  .suggestion-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .suggestion-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-header h3 {
+    font-size: 16px;
+  }
+
+  .empty-actions {
+    flex-direction: column;
+  }
+
+  .empty-actions .el-button {
+    width: 100%;
   }
 }
 </style>
