@@ -199,6 +199,9 @@ export const useRecipeStore = defineStore('recipe', () => {
 
   const cookingProgress = ref(safeParseObject(localStorage.getItem('cookingProgress') || '{}'))
 
+  const favoriteChangeHistory = ref([])
+  const MAX_HISTORY = 5
+
   const leftoverCategories = computed(() => LEFTOVER_CATEGORIES)
   const leftoverIngredients = computed(() => getIngredientsByCategory(selectedLeftoverCategory.value))
   const allLeftoverIngredients = computed(() => LEFTOVER_INGREDIENTS)
@@ -524,16 +527,71 @@ export const useRecipeStore = defineStore('recipe', () => {
 
   function toggleFavorite(recipeId) {
     const index = favorites.value.indexOf(recipeId)
-    if (index === -1) {
-      favorites.value.push(recipeId)
-    } else {
+    const wasFavorite = index !== -1
+    const action = wasFavorite ? 'remove' : 'add'
+
+    if (wasFavorite) {
       favorites.value.splice(index, 1)
+    } else {
+      favorites.value.push(recipeId)
     }
+
+    const changeRecord = {
+      id: Date.now(),
+      recipeId,
+      action,
+      wasFavorite,
+      isFavorite: !wasFavorite,
+      timestamp: Date.now()
+    }
+
+    favoriteChangeHistory.value.unshift(changeRecord)
+    if (favoriteChangeHistory.value.length > MAX_HISTORY) {
+      favoriteChangeHistory.value.pop()
+    }
+
     localStorage.setItem('recipeFavorites', JSON.stringify(favorites.value))
+
+    return {
+      ...changeRecord,
+      recipeName: getRecipeById(recipeId)?.name || ''
+    }
   }
 
   function isFavorite(recipeId) {
     return favorites.value.includes(recipeId)
+  }
+
+  function undoLastFavoriteChange() {
+    if (favoriteChangeHistory.value.length === 0) {
+      return null
+    }
+
+    const lastChange = favoriteChangeHistory.value.shift()
+    const { recipeId, action } = lastChange
+
+    const index = favorites.value.indexOf(recipeId)
+    if (action === 'add') {
+      if (index !== -1) {
+        favorites.value.splice(index, 1)
+      }
+    } else {
+      if (index === -1) {
+        favorites.value.push(recipeId)
+      }
+    }
+
+    localStorage.setItem('recipeFavorites', JSON.stringify(favorites.value))
+
+    return {
+      ...lastChange,
+      recipeName: getRecipeById(recipeId)?.name || '',
+      undoAction: action === 'add' ? 'remove' : 'add'
+    }
+  }
+
+  function getLatestFavoriteChange() {
+    return favoriteChangeHistory.value[0] || null
   }
 
   function addToCompare(recipeId) {
