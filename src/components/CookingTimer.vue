@@ -32,6 +32,9 @@
         <div v-else-if="skipped" class="status-badge warning">
           <el-icon><Warning /></el-icon> 已跳过
         </div>
+        <div v-if="completed && completedTimeText" class="completed-time">
+          {{ completedTimeText }}
+        </div>
       </div>
     </div>
 
@@ -71,7 +74,7 @@
 
 <script setup>
 import { computed, ref, onUnmounted, watch } from 'vue'
-import { ElNotification } from 'element-plus'
+import { useRecipeStore } from '../stores/recipe'
 
 const props = defineProps({
   id: {
@@ -105,13 +108,19 @@ const props = defineProps({
   skipped: {
     type: Boolean,
     default: false
+  },
+  completedAt: {
+    type: Number,
+    default: null
   }
 })
 
-const emit = defineEmits(['start', 'pause', 'reset', 'remove', 'update:remaining'])
+const emit = defineEmits(['start', 'pause', 'reset', 'remove', 'update:remaining', 'complete'])
 
+const store = useRecipeStore()
 const localRemaining = ref(props.remaining)
 const intervalId = ref(null)
+const hasCompleted = ref(false)
 
 const circumference = 2 * Math.PI * 45
 const progress = computed(() => localRemaining.value / props.duration)
@@ -137,6 +146,16 @@ const displayLabel = computed(() => {
   return props.label
 })
 
+const completedTimeText = computed(() => {
+  if (!props.completedAt) return ''
+  const date = new Date(props.completedAt)
+  const now = new Date()
+  const diff = Math.floor((now - date) / 1000)
+  if (diff < 60) return `${diff}秒前`
+  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+})
+
 watch(() => props.remaining, (val) => {
   localRemaining.value = val
 })
@@ -149,8 +168,16 @@ watch(() => props.isRunning, (running) => {
   }
 }, { immediate: true })
 
+watch(() => props.completed, (val) => {
+  if (val) {
+    stopInterval()
+    localRemaining.value = 0
+  }
+})
+
 function startInterval() {
   stopInterval()
+  hasCompleted.value = false
   const startTime = Date.now()
   const startRemaining = localRemaining.value
 
@@ -158,16 +185,11 @@ function startInterval() {
     const elapsed = (Date.now() - startTime) / 1000
     localRemaining.value = Math.max(0, startRemaining - elapsed)
 
-    if (localRemaining.value <= 0) {
+    if (localRemaining.value <= 0 && !hasCompleted.value) {
+      hasCompleted.value = true
       stopInterval()
-      playBeep()
-      ElNotification({
-        title: '计时器完成!',
-        message: `${props.label} 时间到了！`,
-        type: 'success',
-        duration: 5000
-      })
-      emit('pause', props.id)
+      store.completeTimer(props.id)
+      emit('complete', props.id)
     }
   }, 100)
 }
@@ -176,29 +198,6 @@ function stopInterval() {
   if (intervalId.value) {
     clearInterval(intervalId.value)
     intervalId.value = null
-  }
-}
-
-function playBeep() {
-  try {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-    const oscillator = audioCtx.createOscillator()
-    const gainNode = audioCtx.createGain()
-
-    oscillator.connect(gainNode)
-    gainNode.connect(audioCtx.destination)
-
-    oscillator.frequency.value = 800
-    oscillator.type = 'sine'
-    gainNode.gain.value = 0.3
-
-    oscillator.start()
-    setTimeout(() => {
-      oscillator.stop()
-      audioCtx.close()
-    }, 500)
-  } catch (e) {
-    console.log('Audio not available')
   }
 }
 
@@ -214,6 +213,7 @@ function pause() {
 
 function reset() {
   stopInterval()
+  hasCompleted.value = false
   localRemaining.value = props.duration
   emit('reset', props.id)
 }
@@ -338,5 +338,11 @@ onUnmounted(() => {
 .status-badge.warning {
   background: #FF9800;
   color: white;
+}
+
+.completed-time {
+  font-size: 10px;
+  color: #9E9E9E;
+  margin-top: 4px;
 }
 </style>

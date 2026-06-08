@@ -12,11 +12,11 @@
     </div>
 
     <div v-else>
-      <div v-if="activeTimers.length > 0" class="timer-section">
+      <div v-if="pendingTimers.length > 0" class="timer-section">
         <h3 class="section-title">进行中</h3>
         <div class="timer-grid">
           <CookingTimer
-            v-for="timer in activeTimers"
+            v-for="timer in pendingTimers"
             :key="timer.id"
             :id="timer.id"
             :label="timer.label"
@@ -26,6 +26,7 @@
             :started-at="timer.startedAt"
             :completed="timer.completed"
             :skipped="timer.skipped"
+            :completed-at="timer.completedAt"
             @start="handleStart"
             @pause="handlePause"
             @reset="handleReset"
@@ -36,7 +37,18 @@
       </div>
 
       <div v-if="completedTimers.length > 0" class="timer-section">
-        <h3 class="section-title completed">已完成</h3>
+        <div class="section-header">
+          <h3 class="section-title completed">已完成 ({{ completedTimers.length }})</h3>
+          <el-button
+            type="danger"
+            plain
+            size="small"
+            @click="handleClearCompleted"
+          >
+            <el-icon><Delete /></el-icon>
+            一键清除已完成
+          </el-button>
+        </div>
         <div class="timer-grid">
           <CookingTimer
             v-for="timer in completedTimers"
@@ -49,6 +61,7 @@
             :started-at="timer.startedAt"
             :completed="timer.completed"
             :skipped="timer.skipped"
+            :completed-at="timer.completedAt"
             @start="handleStart"
             @pause="handlePause"
             @reset="handleReset"
@@ -64,6 +77,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRecipeStore } from '../stores/recipe'
 import CookingTimer from '../components/CookingTimer.vue'
 
@@ -71,21 +85,8 @@ const router = useRouter()
 const store = useRecipeStore()
 
 const timers = computed(() => store.timers)
-
-const activeTimers = computed(() =>
-  store.timers
-    .filter(t => !t.completed && !t.skipped)
-    .sort((a, b) => {
-      if (a.isRunning !== b.isRunning) {
-        return a.isRunning ? -1 : 1
-      }
-      return a.remaining - b.remaining
-    })
-)
-
-const completedTimers = computed(() =>
-  store.timers.filter(t => t.completed || t.skipped)
-)
+const pendingTimers = computed(() => store.pendingTimers)
+const completedTimers = computed(() => store.completedTimers)
 
 function handleStart(id) {
   store.startTimer(id)
@@ -105,6 +106,23 @@ function handleRemove(id) {
 
 function handleUpdateRemaining({ id, remaining }) {
   store.updateTimerRemaining(id, remaining)
+}
+
+async function handleClearCompleted() {
+  try {
+    await ElMessageBox.confirm(
+      `确定要清除所有 ${completedTimers.value.length} 个已完成的计时器吗？`,
+      '清除确认',
+      {
+        confirmButtonText: '确定清除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    store.clearCompletedTimers()
+    ElMessage.success(`已清除 ${completedTimers.value.length} 个已完成计时器`)
+  } catch {
+  }
 }
 
 function goHome() {
@@ -157,9 +175,17 @@ function goHome() {
   border-left: 4px solid #FF6B35;
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
 .section-title.completed {
   border-left-color: #4CAF50;
   color: #4CAF50;
+  margin-bottom: 0;
 }
 
 @media (max-width: 600px) {

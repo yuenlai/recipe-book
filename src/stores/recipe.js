@@ -650,6 +650,9 @@ export const useRecipeStore = defineStore('recipe', () => {
     homeScrollPosition.value = position
   }
 
+  const completedNotifications = ref([])
+  let notificationDebounceTimer = null
+
   function addTimer(timer) {
     timers.value.push({
       ...timer,
@@ -658,7 +661,9 @@ export const useRecipeStore = defineStore('recipe', () => {
       remaining: timer.remaining !== undefined ? timer.remaining : timer.duration,
       startedAt: null,
       completed: timer.completed || false,
-      skipped: timer.skipped || false
+      skipped: timer.skipped || false,
+      completedAt: timer.completedAt || null,
+      notified: timer.notified || false
     })
   }
 
@@ -670,7 +675,9 @@ export const useRecipeStore = defineStore('recipe', () => {
       remaining: 0,
       startedAt: null,
       completed: true,
-      skipped: timer.skipped || false
+      skipped: timer.skipped || false,
+      completedAt: Date.now(),
+      notified: false
     })
   }
 
@@ -719,6 +726,125 @@ export const useRecipeStore = defineStore('recipe', () => {
       timer.remaining = remaining
     }
   }
+
+  function completeTimer(timerId) {
+    const timer = timers.value.find(t => t.id === timerId)
+    if (timer && !timer.completed) {
+      timer.completed = true
+      timer.completedAt = Date.now()
+      timer.isRunning = false
+      timer.startedAt = null
+      timer.remaining = 0
+      queueCompletedNotification(timer)
+    }
+  }
+
+  function queueCompletedNotification(timer) {
+    if (timer.notified) return
+    timer.notified = true
+
+    completedNotifications.value.push({
+      id: timer.id,
+      label: timer.label,
+      completedAt: timer.completedAt
+    })
+
+    if (notificationDebounceTimer) {
+      clearTimeout(notificationDebounceTimer)
+    }
+
+    notificationDebounceTimer = setTimeout(() => {
+      flushCompletedNotifications()
+    }, 1500)
+  }
+
+  function flushCompletedNotifications() {
+    const notifications = [...completedNotifications.value]
+    completedNotifications.value = []
+
+    if (notifications.length === 0) return
+
+    if (notifications.length === 1) {
+      showSingleNotification(notifications[0])
+    } else {
+      showBatchNotification(notifications)
+    }
+
+    playBeep(notifications.length)
+  }
+
+  function showSingleNotification(notification) {
+    import('element-plus').then(({ ElNotification }) => {
+      ElNotification({
+        title: '计时器完成!',
+        message: `${notification.label} 时间到了！`,
+        type: 'success',
+        duration: 5000,
+        position: 'top-right'
+      })
+    })
+  }
+
+  function showBatchNotification(notifications) {
+    import('element-plus').then(({ ElNotification }) => {
+      const labels = notifications.map(n => n.label).join('、')
+      ElNotification({
+        title: `${notifications.length} 个计时器完成!`,
+        message: `${labels} 时间到了！`,
+        type: 'success',
+        duration: 6000,
+        position: 'top-right'
+      })
+    })
+  }
+
+  function playBeep(count = 1) {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+      const playTone = (delay) => {
+        const oscillator = audioCtx.createOscillator()
+        const gainNode = audioCtx.createGain()
+        oscillator.connect(gainNode)
+        gainNode.connect(audioCtx.destination)
+        oscillator.frequency.value = 800
+        oscillator.type = 'sine'
+        gainNode.gain.value = 0.3
+        oscillator.start(audioCtx.currentTime + delay)
+        oscillator.stop(audioCtx.currentTime + delay + 0.4)
+      }
+      for (let i = 0; i < Math.min(count, 3); i++) {
+        playTone(i * 0.5)
+      }
+      setTimeout(() => audioCtx.close(), Math.min(count, 3) * 500 + 500)
+    } catch (e) {
+      console.log('Audio not available')
+    }
+  }
+
+  function clearCompletedTimers() {
+    timers.value = timers.value.filter(t => !t.completed && !t.skipped)
+  }
+
+  const completedTimers = computed(() =>
+    timers.value
+      .filter(t => t.completed || t.skipped)
+      .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0))
+  )
+
+  const pendingTimers = computed(() =>
+    timers.value
+      .filter(t => !t.completed && !t.skipped)
+      .sort((a, b) => {
+        if (a.isRunning !== b.isRunning) {
+          return a.isRunning ? -1 : 1
+        }
+        return a.remaining - b.remaining
+      })
+  )
+
+  const completedCount = computed(() =>
+    timers.value.filter(t => t.completed || t.skipped).length
+  )
 
   const shoppingListSelectedRecipeObjects = computed(() => {
     return shoppingListSelectedRecipes.value
@@ -1791,6 +1917,11 @@ export const useRecipeStore = defineStore('recipe', () => {
     compareRecipeObjects,
     compareCount,
     activeTimers,
+    completedTimers,
+    pendingTimers,
+    completedCount,
+    completeTimer,
+    clearCompletedTimers,
     shoppingListSelectedRecipes,
     shoppingListSelectedRecipeObjects,
     mergedIngredients,
