@@ -1870,6 +1870,142 @@ export const useRecipeStore = defineStore('recipe', () => {
     return cookingProgress.value[recipeKey] || null
   }
 
+  function toggleCookingIngredient(recipeId, ingredientIndex) {
+    const recipeKey = String(recipeId)
+    const existing = cookingProgress.value[recipeKey] || {
+      currentStepIndex: 0,
+      isStarted: false,
+      isFinished: false,
+      completedSteps: [],
+      stepTimerActualDuration: {},
+      timerRemaining: 0,
+      timerRunning: false,
+      timerFinished: false,
+      checkedIngredients: [],
+      currentPhase: 'prep'
+    }
+    const checkedIngredients = existing.checkedIngredients || []
+    const newChecked = checkedIngredients.includes(ingredientIndex)
+      ? checkedIngredients.filter(i => i !== ingredientIndex)
+      : [...checkedIngredients, ingredientIndex]
+    cookingProgress.value[recipeKey] = {
+      ...existing,
+      isStarted: newChecked.length > 0,
+      checkedIngredients: newChecked,
+      lastUpdated: new Date().toISOString()
+    }
+    localStorage.setItem('cookingProgress', JSON.stringify(cookingProgress.value))
+    return newChecked
+  }
+
+  function setCookingIngredientChecked(recipeId, ingredientIndex, checked) {
+    const recipeKey = String(recipeId)
+    const existing = cookingProgress.value[recipeKey] || {
+      currentStepIndex: 0,
+      isStarted: false,
+      isFinished: false,
+      completedSteps: [],
+      stepTimerActualDuration: {},
+      timerRemaining: 0,
+      timerRunning: false,
+      timerFinished: false,
+      checkedIngredients: [],
+      currentPhase: 'prep'
+    }
+    const checkedIngredients = existing.checkedIngredients || []
+    const newChecked = checked
+      ? [...new Set([...checkedIngredients, ingredientIndex])]
+      : checkedIngredients.filter(i => i !== ingredientIndex)
+    cookingProgress.value[recipeKey] = {
+      ...existing,
+      isStarted: newChecked.length > 0,
+      checkedIngredients: newChecked,
+      lastUpdated: new Date().toISOString()
+    }
+    localStorage.setItem('cookingProgress', JSON.stringify(cookingProgress.value))
+  }
+
+  function getCookingIngredientsChecked(recipeId) {
+    const recipeKey = String(recipeId)
+    const progress = cookingProgress.value[recipeKey]
+    return progress?.checkedIngredients || []
+  }
+
+  function setCookingPhase(recipeId, phase) {
+    const recipeKey = String(recipeId)
+    const existing = cookingProgress.value[recipeKey] || {
+      currentStepIndex: 0,
+      isStarted: false,
+      isFinished: false,
+      completedSteps: [],
+      stepTimerActualDuration: {},
+      timerRemaining: 0,
+      timerRunning: false,
+      timerFinished: false,
+      checkedIngredients: [],
+      currentPhase: 'prep'
+    }
+    cookingProgress.value[recipeKey] = {
+      ...existing,
+      currentPhase: phase,
+      lastUpdated: new Date().toISOString()
+    }
+    localStorage.setItem('cookingProgress', JSON.stringify(cookingProgress.value))
+  }
+
+  function getCookingPhase(recipeId) {
+    const recipeKey = String(recipeId)
+    const progress = cookingProgress.value[recipeKey]
+    return progress?.currentPhase || 'prep'
+  }
+
+  function checkAllCookingIngredients(recipeId, totalCount) {
+    const recipeKey = String(recipeId)
+    const existing = cookingProgress.value[recipeKey] || {
+      currentStepIndex: 0,
+      isStarted: false,
+      isFinished: false,
+      completedSteps: [],
+      stepTimerActualDuration: {},
+      timerRemaining: 0,
+      timerRunning: false,
+      timerFinished: false,
+      checkedIngredients: [],
+      currentPhase: 'prep'
+    }
+    const allChecked = Array.from({ length: totalCount }, (_, i) => i)
+    cookingProgress.value[recipeKey] = {
+      ...existing,
+      isStarted: true,
+      checkedIngredients: allChecked,
+      lastUpdated: new Date().toISOString()
+    }
+    localStorage.setItem('cookingProgress', JSON.stringify(cookingProgress.value))
+    return allChecked
+  }
+
+  function uncheckAllCookingIngredients(recipeId) {
+    const recipeKey = String(recipeId)
+    const existing = cookingProgress.value[recipeKey] || {
+      currentStepIndex: 0,
+      isStarted: false,
+      isFinished: false,
+      completedSteps: [],
+      stepTimerActualDuration: {},
+      timerRemaining: 0,
+      timerRunning: false,
+      timerFinished: false,
+      checkedIngredients: [],
+      currentPhase: 'prep'
+    }
+    cookingProgress.value[recipeKey] = {
+      ...existing,
+      checkedIngredients: [],
+      lastUpdated: new Date().toISOString()
+    }
+    localStorage.setItem('cookingProgress', JSON.stringify(cookingProgress.value))
+  }
+
   function clearCookingProgress(recipeId) {
     const recipeKey = String(recipeId)
     if (cookingProgress.value[recipeKey]) {
@@ -2059,7 +2195,14 @@ export const useRecipeStore = defineStore('recipe', () => {
     getCookingProgress,
     clearCookingProgress,
     hasCookingProgress,
-    getActiveCookingRecipes
+    getActiveCookingRecipes,
+    toggleCookingIngredient,
+    setCookingIngredientChecked,
+    getCookingIngredientsChecked,
+    setCookingPhase,
+    getCookingPhase,
+    checkAllCookingIngredients,
+    uncheckAllCookingIngredients
   }
 }, {
   persist: {

@@ -69,7 +69,14 @@
         </el-tag>
       </div>
 
-      <IngredientList :ingredients="recipe.ingredients" :scale-ratio="scaleRatio" :original-servings="recipe.servings" :current-servings="currentServings" />
+      <IngredientList
+        :ingredients="recipe.ingredients"
+        :scale-ratio="scaleRatio"
+        :original-servings="recipe.servings"
+        :current-servings="currentServings"
+        :recipe-id="recipe.id"
+        @all-checked="onAllIngredientsChecked"
+      />
       <StepList :steps="recipe.steps" :recipe-id="recipe.id" />
 
       <div class="detail-extra-actions">
@@ -302,6 +309,14 @@ function goToCompare() {
 function removeFromCompare(recipeId) {
   store.removeFromCompare(recipeId)
   ElMessage.success('已从对比中移除')
+}
+
+function onAllIngredientsChecked() {
+  ElMessage({
+    message: '所有食材已准备完成，可以开始烹饪啦！',
+    type: 'success',
+    duration: 3000
+  })
 }
 </script>
 
