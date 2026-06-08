@@ -31,11 +31,22 @@
             <span class="stat-label">烹饪(分钟)</span>
           </div>
         </div>
-        <div class="stat-item">
+        <div class="stat-item servings-item">
           <el-icon><User /></el-icon>
-          <div>
-            <span class="stat-value">{{ recipe.servings }}</span>
-            <span class="stat-label">份量(人)</span>
+          <div class="servings-control">
+            <span class="stat-label">用餐人数</span>
+            <div class="servings-adjuster">
+              <el-button circle size="small" @click="decreaseServings" :disabled="currentServings <= 1">
+                <el-icon><Minus /></el-icon>
+              </el-button>
+              <span class="servings-value">{{ currentServings }}</span>
+              <el-button circle size="small" @click="increaseServings" :disabled="currentServings >= 20">
+                <el-icon><Plus /></el-icon>
+              </el-button>
+            </div>
+            <span class="servings-original" v-if="currentServings !== recipe.servings">
+              (原配方 {{ recipe.servings }} 人份)
+            </span>
           </div>
         </div>
         <div class="stat-item">
@@ -58,7 +69,7 @@
         </el-tag>
       </div>
 
-      <IngredientList :ingredients="recipe.ingredients" />
+      <IngredientList :ingredients="recipe.ingredients" :scale-ratio="scaleRatio" :original-servings="recipe.servings" :current-servings="currentServings" />
       <StepList :steps="recipe.steps" />
 
       <div class="detail-extra-actions">
@@ -158,20 +169,45 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useRecipeStore } from '../stores/recipe'
 import FavoriteButton from '../components/FavoriteButton.vue'
 import IngredientList from '../components/IngredientList.vue'
 import StepList from '../components/StepList.vue'
-import { DataLine, Check, Plus, Close } from '@element-plus/icons-vue'
+import { DataLine, Check, Plus, Close, Minus } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const store = useRecipeStore()
 
 const recipe = computed(() => store.getRecipeById(route.params.id))
+
+const currentServings = ref(2)
+
+watch(recipe, (newRecipe) => {
+  if (newRecipe) {
+    currentServings.value = newRecipe.servings
+  }
+}, { immediate: true })
+
+const scaleRatio = computed(() => {
+  if (!recipe.value) return 1
+  return currentServings.value / recipe.value.servings
+})
+
+function increaseServings() {
+  if (currentServings.value < 20) {
+    currentServings.value++
+  }
+}
+
+function decreaseServings() {
+  if (currentServings.value > 1) {
+    currentServings.value--
+  }
+}
 
 const totalTime = computed(() => {
   if (!recipe.value) return 0
@@ -328,6 +364,42 @@ function removeFromCompare(recipeId) {
   display: block;
   font-size: 12px;
   color: #999;
+}
+
+.servings-item {
+  min-width: 0;
+}
+
+.servings-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.servings-control .stat-label {
+  margin-bottom: 2px;
+}
+
+.servings-adjuster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.servings-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #3D3D3D;
+  min-width: 30px;
+  text-align: center;
+}
+
+.servings-original {
+  font-size: 10px;
+  color: #999;
+  white-space: nowrap;
 }
 
 .detail-tags {
