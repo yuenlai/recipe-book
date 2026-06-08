@@ -1,9 +1,9 @@
 <template>
   <div class="home-page">
     <transition name="toast">
-      <div v-if="showRestoreToast" class="restore-toast">
-        <el-icon><RefreshRight /></el-icon>
-        <span>已回到第 {{ currentPage }} 页 · {{ restorePositionText }}</span>
+      <div v-if="showRestoreToast" class="restore-toast" :class="{ 'is-restoring': isRestoring }">
+        <el-icon :class="{ 'spin': isRestoring }"><RefreshRight /></el-icon>
+        <span>{{ restoreToastText }}</span>
       </div>
     </transition>
 
@@ -157,8 +157,9 @@
         />
       </div>
 
-      <div v-if="totalPages > 1" class="pagination-wrapper">
+      <div v-if="totalPages > 1" class="pagination-wrapper" ref="paginationWrapper">
         <el-pagination
+          ref="paginationRef"
           v-model:current-page="currentPage"
           :page-size="9"
           :total="filteredRecipes.length"
@@ -172,7 +173,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onActivated, onDeactivated, nextTick } from 'vue'
+import { computed, ref, onActivated, onDeactivated, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { RefreshRight } from '@element-plus/icons-vue'
 import { useRecipeStore } from '../stores/recipe'
@@ -186,9 +187,15 @@ defineOptions({
 const store = useRecipeStore()
 const router = useRouter()
 
+const paginationRef = ref(null)
+const paginationWrapper = ref(null)
+
 const showRestoreToast = ref(false)
-const restorePositionText = ref('')
+const isRestoring = ref(false)
+const restoreToastText = ref('')
+const highlightPage = ref(false)
 let toastTimer = null
+let highlightTimer = null
 
 const filteredRecipes = computed(() => store.filteredRecipes)
 const paginatedRecipes = computed(() => store.paginatedRecipes)
@@ -233,7 +240,7 @@ function saveScrollPosition() {
   store.setScrollPosition(window.scrollY)
 }
 
-function showRestoreNotification(scrollPos) {
+function buildRestoreText(scrollPos, isComplete) {
   const category = store.selectedCategory
   const search = store.searchQuery
   const page = store.currentPage
@@ -249,44 +256,119 @@ function showRestoreNotification(scrollPos) {
     parts.push('保持滚动位置')
   }
 
-  const baseText = parts.length > 0 ? parts.join(' · ') : '保持浏览位置'
-  restorePositionText.value = page > 1 ? `${baseText} · 第${page}页` : baseText
+  const baseText = parts.length > 0 ? parts.join(' · ') : '浏览位置'
+  const pageText = page > 1 ? ` · 第${page}页` : ''
+
+  if (isComplete) {
+    return `✓ 已恢复${pageText} · ${baseText}`
+  } else {
+    return `正在恢复${pageText}...`
+  }
+}
+
+function highlightCurrentPage() {
+  if (highlightTimer) {
+    clearTimeout(highlightTimer)
+  }
+
+  highlightPage.value = true
 
   nextTick(() => {
-    showRestoreToast.value = true
-
-    if (toastTimer) {
-      clearTimeout(toastTimer)
+    if (paginationWrapper.value) {
+      const activePageEl = paginationWrapper.value.querySelector('.el-pager .is-active')
+      if (activePageEl) {
+        activePageEl.classList.add('page-highlight')
+        highlightTimer = setTimeout(() => {
+          activePageEl.classList.remove('page-highlight')
+          highlightPage.value = false
+        }, 2500)
+      }
     }
-    toastTimer = setTimeout(() => {
-      showRestoreToast.value = false
-    }, 4000)
   })
 }
 
-function restoreScrollPosition() {
+function waitForDOMReady() {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      resolve()
+    }, 100)
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          clearTimeout(timeout)
+          resolve()
+        })
+      })
+    })
+  })
+}
+
+async function restoreScrollPosition() {
   const scrollPos = store.homeScrollPosition || 0
   const hasCategory = store.selectedCategory && store.selectedCategory !== '全部'
   const hasSearch = store.searchQuery && store.searchQuery.trim()
   const hasPage = store.currentPage > 1
   const hasScroll = scrollPos > 50
-  const isRestoring = hasCategory || hasSearch || hasPage || hasScroll
+  const needsRestore = hasCategory || hasSearch || hasPage || hasScroll
 
-  nextTick(() => {
-    window.scrollTo({ top: scrollPos, behavior: scrollPos > 50 ? 'smooth' : 'auto' })
+  if (!needsRestore) {
+    return
+  }
+
+  if (toastTimer) {
+    clearTimeout(toastTimer)
+  }
+
+  isRestoring.value = true
+  restoreToastText.value = buildRestoreText(scrollPos, false)
+  showRestoreToast.value = true
+
+  await waitForDOMReady()
+
+  const actualScrollPos = scrollPos
+  const useSmooth = actualScrollPos > 50
+
+  window.scrollTo({
+    top: actualScrollPos,
+    behavior: useSmooth ? 'smooth' : 'auto'
   })
 
-  if (isRestoring) {
-    showRestoreNotification(scrollPos)
+  if (useSmooth) {
+    await new Promise(resolve => setTimeout(resolve, 500))
   }
+
+  await waitForDOMReady()
+
+  isRestoring.value = false
+  restoreToastText.value = buildRestoreText(actualScrollPos, true)
+
+  highlightCurrentPage()
+
+  toastTimer = setTimeout(() => {
+    showRestoreToast.value = false
+  }, 4000)
 }
 
+onMounted(() => {
+  nextTick(() => {
+    restoreScrollPosition()
+  })
+})
+
 onActivated(() => {
-  restoreScrollPosition()
+  nextTick(() => {
+    restoreScrollPosition()
+  })
 })
 
 onDeactivated(() => {
   saveScrollPosition()
+  if (toastTimer) {
+    clearTimeout(toastTimer)
+  }
+  if (highlightTimer) {
+    clearTimeout(highlightTimer)
+  }
 })
 </script>
 
@@ -301,11 +383,11 @@ onDeactivated(() => {
   top: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, #FF6B35, #FF8C42);
+  background: linear-gradient(135deg, #67C23A, #85CE61);
   color: white;
   padding: 12px 24px;
   border-radius: 24px;
-  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.4);
+  box-shadow: 0 4px 20px rgba(103, 194, 58, 0.4);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -313,10 +395,25 @@ onDeactivated(() => {
   font-weight: 500;
   z-index: 1000;
   backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.restore-toast.is-restoring {
+  background: linear-gradient(135deg, #E6A23C, #EEBE77);
+  box-shadow: 0 4px 20px rgba(230, 162, 60, 0.4);
 }
 
 .restore-toast .el-icon {
   font-size: 18px;
+}
+
+.restore-toast .el-icon.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .toast-enter-active,
@@ -334,6 +431,27 @@ onDeactivated(() => {
 .toast-leave-from {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+:deep(.el-pager .is-active.page-highlight) {
+  animation: pagePulse 0.6s ease-in-out 3;
+  background: linear-gradient(135deg, #FF6B35, #FF8C42) !important;
+  color: white !important;
+  transform: scale(1.15);
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.5);
+}
+
+@keyframes pagePulse {
+  0%, 100% {
+    transform: scale(1.15);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+.pagination-wrapper {
+  position: relative;
 }
 
 

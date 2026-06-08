@@ -84,6 +84,7 @@ const difficultyType = computed(() => {
 })
 
 function goToDetail() {
+  store.setScrollPosition(window.scrollY)
   router.push(`/recipe/${props.recipe.id}`)
 }
 
