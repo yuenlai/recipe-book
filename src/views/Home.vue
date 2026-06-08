@@ -1,5 +1,12 @@
 <template>
   <div class="home-page">
+    <transition name="toast">
+      <div v-if="showRestoreToast" class="restore-toast">
+        <el-icon><RefreshRight /></el-icon>
+        <span>已回到第 {{ currentPage }} 页 · {{ restorePositionText }}</span>
+      </div>
+    </transition>
+
     <div class="page-header">
       <h1>探索美食 🍽️</h1>
       <p>发现美味，享受烹饪的乐趣</p>
@@ -165,8 +172,9 @@
 </template>
 
 <script setup>
-import { computed, onActivated, onDeactivated, nextTick } from 'vue'
+import { computed, ref, onActivated, onDeactivated, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { RefreshRight } from '@element-plus/icons-vue'
 import { useRecipeStore } from '../stores/recipe'
 import CategoryFilter from '../components/CategoryFilter.vue'
 import RecipeCard from '../components/RecipeCard.vue'
@@ -177,6 +185,10 @@ defineOptions({
 
 const store = useRecipeStore()
 const router = useRouter()
+
+const showRestoreToast = ref(false)
+const restorePositionText = ref('')
+let toastTimer = null
 
 const filteredRecipes = computed(() => store.filteredRecipes)
 const paginatedRecipes = computed(() => store.paginatedRecipes)
@@ -221,11 +233,52 @@ function saveScrollPosition() {
   store.setScrollPosition(window.scrollY)
 }
 
-function restoreScrollPosition() {
+function showRestoreNotification(scrollPos) {
+  const category = store.selectedCategory
+  const search = store.searchQuery
+  const page = store.currentPage
+  const parts = []
+
+  if (category && category !== '全部') {
+    parts.push(`「${category}」`)
+  }
+  if (search && search.trim()) {
+    parts.push(`搜索「${search}」`)
+  }
+  if (scrollPos > 100) {
+    parts.push('保持滚动位置')
+  }
+
+  const baseText = parts.length > 0 ? parts.join(' · ') : '保持浏览位置'
+  restorePositionText.value = page > 1 ? `${baseText} · 第${page}页` : baseText
+
   nextTick(() => {
-    const scrollPos = store.homeScrollPosition || 0
-    window.scrollTo({ top: scrollPos, behavior: 'auto' })
+    showRestoreToast.value = true
+
+    if (toastTimer) {
+      clearTimeout(toastTimer)
+    }
+    toastTimer = setTimeout(() => {
+      showRestoreToast.value = false
+    }, 4000)
   })
+}
+
+function restoreScrollPosition() {
+  const scrollPos = store.homeScrollPosition || 0
+  const hasCategory = store.selectedCategory && store.selectedCategory !== '全部'
+  const hasSearch = store.searchQuery && store.searchQuery.trim()
+  const hasPage = store.currentPage > 1
+  const hasScroll = scrollPos > 50
+  const isRestoring = hasCategory || hasSearch || hasPage || hasScroll
+
+  nextTick(() => {
+    window.scrollTo({ top: scrollPos, behavior: scrollPos > 50 ? 'smooth' : 'auto' })
+  })
+
+  if (isRestoring) {
+    showRestoreNotification(scrollPos)
+  }
 }
 
 onActivated(() => {
@@ -240,7 +293,49 @@ onDeactivated(() => {
 <style scoped>
 .home-page {
   padding-bottom: 40px;
+  position: relative;
 }
+
+.restore-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #FF6B35, #FF8C42);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+.restore-toast .el-icon {
+  font-size: 18px;
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-20px);
+}
+
+.toast-enter-to,
+.toast-leave-from {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 
 .quick-entry-section {
   margin-bottom: 24px;
