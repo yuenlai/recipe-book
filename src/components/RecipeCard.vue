@@ -36,33 +36,28 @@
         <el-tag v-if="isLowCalorie" size="small" type="warning" effect="dark" class="badge-item">
           💪 低脂
         </el-tag>
+        <el-tag size="small" type="info" effect="dark" class="badge-item">
+          {{ recipe.category }}
+        </el-tag>
       </div>
     </div>
 
     <div class="card-body">
       <div class="card-header">
         <h3 class="card-title">{{ recipe.name }}</h3>
-        <el-tag size="small" :type="difficultyType" effect="plain" class="difficulty-tag">
-          {{ recipe.difficulty }}
-        </el-tag>
       </div>
 
       <p class="card-highlight">{{ recipe.description }}</p>
 
-      <div class="card-meta-row">
-        <div class="meta-item">
-          <el-icon><Timer /></el-icon>
-          <span>{{ totalTime }}分钟</span>
-        </div>
-        <div class="meta-item">
-          <el-icon><User /></el-icon>
-          <span>{{ recipe.servings }}人份</span>
-        </div>
-        <div class="meta-item">
-          <el-icon><Place /></el-icon>
-          <span>{{ recipe.category }}</span>
-        </div>
-      </div>
+      <RecipeStats
+        :prep-time="recipe.prepTime"
+        :cook-time="recipe.cookTime"
+        :servings="recipe.servings"
+        :difficulty="recipe.difficulty"
+        compact
+        :highlight-time="isQuickMeal"
+        class="card-stats"
+      />
 
       <div class="card-key-ingredients">
         <span class="ingredients-label">主料：</span>
@@ -92,7 +87,8 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useRecipeStore } from '../stores/recipe'
 import FavoriteButton from './FavoriteButton.vue'
-import { DataLine, Check, Timer, User, Place } from '@element-plus/icons-vue'
+import RecipeStats from './RecipeStats.vue'
+import { DataLine, Check } from '@element-plus/icons-vue'
 
 const props = defineProps({
   recipe: {
@@ -104,13 +100,9 @@ const props = defineProps({
 const router = useRouter()
 const store = useRecipeStore()
 
-const totalTime = computed(() => props.recipe.prepTime + props.recipe.cookTime)
 const compareCount = computed(() => store.compareCount)
 
-const difficultyType = computed(() => {
-  const map = { '简单': 'success', '中等': 'warning', '困难': 'danger' }
-  return map[props.recipe.difficulty] || 'info'
-})
+const totalTime = computed(() => props.recipe.prepTime + props.recipe.cookTime)
 
 const isQuickMeal = computed(() => totalTime.value <= 20)
 const isVegetarian = computed(() => {
@@ -349,10 +341,6 @@ function toggleCompare() {
 }
 
 .card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   margin-bottom: 8px;
 }
 
@@ -361,14 +349,9 @@ function toggleCompare() {
   font-weight: 600;
   margin: 0;
   color: #3D3D3D;
-  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.difficulty-tag {
-  flex-shrink: 0;
 }
 
 .card-highlight {
@@ -383,27 +366,10 @@ function toggleCompare() {
   min-height: 36px;
 }
 
-.card-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.card-stats {
   margin-bottom: 10px;
   padding-bottom: 10px;
   border-bottom: 1px dashed #F0F0F0;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: #757575;
-  white-space: nowrap;
-}
-
-.meta-item .el-icon {
-  font-size: 14px;
-  color: #FF6B35;
 }
 
 .card-key-ingredients {
@@ -437,17 +403,6 @@ function toggleCompare() {
   font-size: 11px;
 }
 
-@media (max-width: 992px) {
-  .card-meta-row {
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .meta-item {
-    font-size: 11px;
-  }
-}
-
 @media (max-width: 600px) {
   .card-cover {
     height: 120px;
@@ -460,10 +415,6 @@ function toggleCompare() {
   .card-highlight {
     -webkit-line-clamp: 1;
     min-height: 18px;
-  }
-
-  .card-meta-row {
-    gap: 10px;
   }
 }
 </style>

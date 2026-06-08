@@ -11,49 +11,36 @@
     <div class="detail-content">
       <div class="detail-title-row">
         <h1>{{ recipe.name }}</h1>
-        <el-tag size="large" :type="difficultyType">{{ recipe.difficulty }}</el-tag>
       </div>
 
       <p class="detail-description">{{ recipe.description }}</p>
 
-      <div class="detail-stats">
-        <div class="stat-item">
-          <el-icon><Timer /></el-icon>
-          <div>
-            <span class="stat-value">{{ recipe.prepTime }}</span>
-            <span class="stat-label">准备(分钟)</span>
-          </div>
-        </div>
-        <div class="stat-item">
-          <el-icon><Dish /></el-icon>
-          <div>
-            <span class="stat-value">{{ recipe.cookTime }}</span>
-            <span class="stat-label">烹饪(分钟)</span>
-          </div>
-        </div>
-        <div class="stat-item servings-item">
-          <el-icon><User /></el-icon>
-          <div class="servings-control">
-            <span class="stat-label">用餐人数</span>
-            <div class="servings-adjuster">
-              <el-button circle size="small" @click="decreaseServings" :disabled="currentServings <= 1">
-                <el-icon><Minus /></el-icon>
-              </el-button>
-              <span class="servings-value">{{ currentServings }}</span>
-              <el-button circle size="small" @click="increaseServings" :disabled="currentServings >= 20">
-                <el-icon><Plus /></el-icon>
-              </el-button>
+      <RecipeStats
+        :prep-time="recipe.prepTime"
+        :cook-time="recipe.cookTime"
+        :servings="recipe.servings"
+        :difficulty="recipe.difficulty"
+        :show-servings-control="true"
+        :highlight-time="totalTime <= 20"
+        class="detail-main-stats"
+        @update:servings="onServingsChange"
+      />
+
+      <div class="detail-time-breakdown">
+        <div class="time-breakdown-item">
+          <div class="time-icon prep">
+            <el-icon><Timer /></el-icon>
+            <div>
+              <span class="time-value">{{ recipe.prepTime }}</span>
+              <span class="time-label">准备(分钟)</span>
             </div>
-            <span class="servings-original" v-if="currentServings !== recipe.servings">
-              (原配方 {{ recipe.servings }} 人份)
-            </span>
           </div>
-        </div>
-        <div class="stat-item">
-          <el-icon><Clock /></el-icon>
-          <div>
-            <span class="stat-value">{{ totalTime }}</span>
-            <span class="stat-label">总计(分钟)</span>
+          <div class="time-icon cook">
+            <el-icon><Dish /></el-icon>
+            <div>
+              <span class="time-value">{{ recipe.cookTime }}</span>
+              <span class="time-label">烹饪(分钟)</span>
+            </div>
           </div>
         </div>
       </div>
@@ -195,7 +182,8 @@ import { useRecipeStore } from '../stores/recipe'
 import FavoriteButton from '../components/FavoriteButton.vue'
 import IngredientList from '../components/IngredientList.vue'
 import StepList from '../components/StepList.vue'
-import { DataLine, Check, Plus, Close, Minus, Refresh, RefreshRight } from '@element-plus/icons-vue'
+import RecipeStats from '../components/RecipeStats.vue'
+import { DataLine, Check, Plus, Close, Refresh, RefreshRight, Timer, Dish } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -216,27 +204,13 @@ const scaleRatio = computed(() => {
   return currentServings.value / recipe.value.servings
 })
 
-function increaseServings() {
-  if (currentServings.value < 20) {
-    currentServings.value++
-  }
-}
-
-function decreaseServings() {
-  if (currentServings.value > 1) {
-    currentServings.value--
-  }
+function onServingsChange(newServings) {
+  currentServings.value = newServings
 }
 
 const totalTime = computed(() => {
   if (!recipe.value) return 0
   return recipe.value.prepTime + recipe.value.cookTime
-})
-
-const difficultyType = computed(() => {
-  if (!recipe.value) return 'info'
-  const map = { '简单': 'success', '中等': 'warning', '困难': 'danger' }
-  return map[recipe.value.difficulty] || 'info'
 })
 
 function goBack() {
@@ -379,76 +353,60 @@ function onAllIngredientsChecked() {
   margin-bottom: 20px;
 }
 
-.detail-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+.detail-main-stats {
+  margin-bottom: 16px;
+}
+
+.detail-time-breakdown {
+  display: flex;
+  justify-content: center;
   margin-bottom: 20px;
 }
 
-.stat-item {
-  background: #FFF8F0;
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
+.time-breakdown-item {
   display: flex;
-  flex-direction: column;
+  gap: 24px;
+  padding: 12px 24px;
+  background: #FAFAFA;
+  border-radius: 12px;
+}
+
+.time-icon {
+  display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.stat-item .el-icon {
-  font-size: 24px;
+.time-icon .el-icon {
+  font-size: 18px;
   color: #FF6B35;
 }
 
-.stat-value {
-  display: block;
-  font-size: 20px;
-  font-weight: 700;
-  color: #3D3D3D;
+.time-icon.prep .el-icon {
+  color: #409EFF;
 }
 
-.stat-label {
-  display: block;
-  font-size: 12px;
-  color: #999;
+.time-icon.cook .el-icon {
+  color: #E6A23C;
 }
 
-.servings-item {
-  min-width: 0;
-}
-
-.servings-control {
+.time-icon div {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
+  gap: 2px;
 }
 
-.servings-control .stat-label {
-  margin-bottom: 2px;
-}
-
-.servings-adjuster {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.servings-value {
-  font-size: 20px;
-  font-weight: 700;
+.time-value {
+  font-size: 16px;
+  font-weight: 600;
   color: #3D3D3D;
-  min-width: 30px;
-  text-align: center;
+  line-height: 1.2;
 }
 
-.servings-original {
-  font-size: 10px;
+.time-label {
+  font-size: 11px;
   color: #999;
-  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .detail-tags {
@@ -632,16 +590,21 @@ function onAllIngredientsChecked() {
 }
 
 @media (max-width: 600px) {
-  .detail-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .detail-title-row h1 {
     font-size: 22px;
   }
 
   .detail-emoji {
     font-size: 72px;
+  }
+
+  .time-breakdown-item {
+    gap: 16px;
+    padding: 10px 16px;
+  }
+
+  .time-value {
+    font-size: 14px;
   }
 }
 </style>

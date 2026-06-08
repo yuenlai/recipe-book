@@ -12,23 +12,13 @@
         </div>
         <div class="recipe-intro">
           <h1 class="recipe-name">{{ recipe.name }}</h1>
-          <div class="recipe-meta">
-            <el-tag size="small" :type="getDifficultyType(recipe.difficulty)" effect="plain">
-              {{ recipe.difficulty }}
-            </el-tag>
-            <span class="meta-item">
-              <el-icon><Timer /></el-icon>
-              准备 {{ recipe.prepTime }}分钟
-            </span>
-            <span class="meta-item">
-              <el-icon><Timer /></el-icon>
-              烹饪 {{ recipe.cookTime }}分钟
-            </span>
-            <span class="meta-item">
-              <el-icon><User /></el-icon>
-              {{ recipe.servings }}人份
-            </span>
-          </div>
+          <RecipeStats
+            :prep-time="recipe.prepTime"
+            :cook-time="recipe.cookTime"
+            :servings="recipe.servings"
+            :difficulty="recipe.difficulty"
+            class="recipe-meta-stats"
+          />
           <p class="recipe-desc">{{ recipe.description }}</p>
           <div class="recipe-tags">
             <el-tag
@@ -148,10 +138,9 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useRecipeStore } from '../stores/recipe'
+import RecipeStats from '../components/RecipeStats.vue'
 import {
   ArrowLeft,
-  Timer,
-  User,
   MagicStick,
   Refresh,
   List,
@@ -200,11 +189,6 @@ const ingredientEmojiMap = {
 
 function getIngredientEmoji(name) {
   return ingredientEmojiMap[name] || '🍽️'
-}
-
-function getDifficultyType(difficulty) {
-  const map = { '简单': 'success', '中等': 'warning', '困难': 'danger' }
-  return map[difficulty] || 'info'
 }
 
 function goBack() {
@@ -297,20 +281,8 @@ function addToShoppingList() {
   margin: 0 0 16px 0;
 }
 
-.recipe-meta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+.recipe-meta-stats {
   margin-bottom: 16px;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  color: #757575;
 }
 
 .recipe-desc {
@@ -533,8 +505,9 @@ function addToShoppingList() {
     font-size: 72px;
   }
 
-  .recipe-meta {
-    justify-content: center;
+  .recipe-meta-stats {
+    max-width: 400px;
+    margin: 0 auto 16px;
   }
 
   .content-grid {
