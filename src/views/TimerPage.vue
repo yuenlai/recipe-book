@@ -73,7 +73,14 @@ const store = useRecipeStore()
 const timers = computed(() => store.timers)
 
 const activeTimers = computed(() =>
-  store.timers.filter(t => !t.completed && !t.skipped)
+  store.timers
+    .filter(t => !t.completed && !t.skipped)
+    .sort((a, b) => {
+      if (a.isRunning !== b.isRunning) {
+        return a.isRunning ? -1 : 1
+      }
+      return a.remaining - b.remaining
+    })
 )
 
 const completedTimers = computed(() =>
