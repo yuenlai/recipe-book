@@ -197,6 +197,8 @@ export const useRecipeStore = defineStore('recipe', () => {
   const fatLossCompletedDays = ref(safeParseArray(localStorage.getItem('fatLossCompletedDays') || '[]'))
   const fatLossCurrentWeek = ref(JSON.parse(localStorage.getItem('fatLossCurrentWeek') || 'null'))
 
+  const cookingProgress = ref(safeParseObject(localStorage.getItem('cookingProgress') || '{}'))
+
   const leftoverCategories = computed(() => LEFTOVER_CATEGORIES)
   const leftoverIngredients = computed(() => getIngredientsByCategory(selectedLeftoverCategory.value))
   const allLeftoverIngredients = computed(() => LEFTOVER_INGREDIENTS)
@@ -1549,6 +1551,44 @@ export const useRecipeStore = defineStore('recipe', () => {
     addRecipesToShoppingList(Array.from(recipeIds))
   }
 
+  function saveCookingProgress(recipeId, progress) {
+    const recipeKey = String(recipeId)
+    cookingProgress.value[recipeKey] = {
+      ...progress,
+      lastUpdated: new Date().toISOString()
+    }
+    localStorage.setItem('cookingProgress', JSON.stringify(cookingProgress.value))
+  }
+
+  function getCookingProgress(recipeId) {
+    const recipeKey = String(recipeId)
+    return cookingProgress.value[recipeKey] || null
+  }
+
+  function clearCookingProgress(recipeId) {
+    const recipeKey = String(recipeId)
+    if (cookingProgress.value[recipeKey]) {
+      delete cookingProgress.value[recipeKey]
+      localStorage.setItem('cookingProgress', JSON.stringify(cookingProgress.value))
+    }
+  }
+
+  function hasCookingProgress(recipeId) {
+    const recipeKey = String(recipeId)
+    const progress = cookingProgress.value[recipeKey]
+    return progress && !progress.isFinished
+  }
+
+  function getActiveCookingRecipes() {
+    return Object.entries(cookingProgress.value)
+      .filter(([_, progress]) => !progress.isFinished)
+      .map(([recipeId, progress]) => ({
+        recipeId: Number(recipeId),
+        ...progress
+      }))
+      .sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated))
+  }
+
   return {
     recipes,
     favorites,
@@ -1702,7 +1742,13 @@ export const useRecipeStore = defineStore('recipe', () => {
     resetFatLossProgress,
     addFatLossRecipeToMealPlan,
     addFatLossDayToShoppingList,
-    addFatLossWeekToShoppingList
+    addFatLossWeekToShoppingList,
+    cookingProgress,
+    saveCookingProgress,
+    getCookingProgress,
+    clearCookingProgress,
+    hasCookingProgress,
+    getActiveCookingRecipes
   }
 }, {
   persist: {

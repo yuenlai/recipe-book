@@ -141,6 +141,24 @@
         <el-button type="primary" size="large" @click="showTip = false">知道了</el-button>
       </div>
     </div>
+
+    <div v-if="showResumeDialog" class="resume-overlay">
+      <div class="resume-content">
+        <div class="resume-icon">📝</div>
+        <h2>发现未完成的烹饪进度</h2>
+        <p class="resume-desc">
+          上次您做到了第 <strong>{{ (savedProgress?.currentStepIndex || 0) + 1 }}</strong> 步，
+          共 {{ totalSteps }} 步
+        </p>
+        <p class="resume-time" v-if="savedProgress?.lastUpdated">
+          {{ formatLastUpdated(savedProgress.lastUpdated) }}
+        </p>
+        <div class="resume-actions">
+          <el-button size="large" @click="startNew">重新开始</el-button>
+          <el-button type="primary" size="large" @click="resumeCooking">继续上次进度</el-button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div v-else class="not-found">
@@ -174,6 +192,9 @@ let timerInterval = null
 
 const showTip = ref(false)
 const tipMessage = ref('')
+
+const showResumeDialog = ref(false)
+const savedProgress = ref(null)
 
 const recordedStepIndices = ref(new Set())
 const stepTimerActualDuration = ref({})
@@ -220,6 +241,7 @@ function startCooking() {
   if (currentStep.value) {
     timerRemaining.value = currentStep.value.duration
   }
+  saveProgress()
   speak(currentStep.value?.description)
 }
 
@@ -353,12 +375,14 @@ function advanceStep(skipped = false) {
 
   if (currentStepIndex.value >= totalSteps.value - 1) {
     isFinished.value = true
+    saveProgress()
     speak('恭喜你，所有步骤都完成了！')
     return
   }
 
   currentStepIndex.value++
   resetStepTimer()
+  saveProgress()
   speak(currentStep.value?.description)
 
   if (currentStep.value?.tip) {
@@ -392,6 +416,7 @@ function prevStep() {
       }
     }
 
+    saveProgress()
     speak(currentStep.value?.description)
   }
 }
@@ -416,6 +441,37 @@ function goBack() {
   router.push('/')
 }
 
+function saveProgress() {
+  if (!recipe.value) return
+  store.saveCookingProgress(recipe.value.id, {
+    currentStepIndex: currentStepIndex.value,
+    isStarted: isStarted.value,
+    isFinished: isFinished.value,
+    completedSteps: Array.from(recordedStepIndices.value),
+    stepTimerActualDuration: stepTimerActualDuration.value,
+    timerRemaining: timerRemaining.value,
+    timerRunning: timerRunning.value,
+    timerFinished: timerFinished.value
+  })
+}
+
+function restoreProgress(progress) {
+  if (!progress) return
+  currentStepIndex.value = progress.currentStepIndex || 0
+  isStarted.value = progress.isStarted || false
+  isFinished.value = progress.isFinished || false
+  recordedStepIndices.value = new Set(progress.completedSteps || [])
+  stepTimerActualDuration.value = progress.stepTimerActualDuration || {}
+  timerRemaining.value = progress.timerRemaining || (currentStep.value?.duration || 0)
+  timerRunning.value = false
+  timerFinished.value = progress.timerFinished || false
+  showResumeDialog.value = false
+  savedProgress.value = null
+  if (progress.timerRemaining !== undefined && currentStep.value) {
+    timerRemaining.value = Math.max(0, progress.timerRemaining)
+  }
+}
+
 function resetAllState() {
   currentStepIndex.value = 0
   isStarted.value = false
@@ -429,14 +485,55 @@ function resetAllState() {
   if (currentStep.value) {
     timerRemaining.value = currentStep.value.duration
   }
+  if (recipe.value) {
+    store.clearCookingProgress(recipe.value.id)
+  }
 }
 
 watch(() => route.params.id, () => {
   resetAllState()
 })
 
-onMounted(() => {
+function checkSavedProgress() {
+  if (!recipe.value) return
+  const progress = store.getCookingProgress(recipe.value.id)
+  if (progress && progress.isStarted && !progress.isFinished) {
+    savedProgress.value = progress
+    showResumeDialog.value = true
+  } else {
+    resetAllState()
+  }
+}
+
+function startNew() {
+  showResumeDialog.value = false
+  savedProgress.value = null
   resetAllState()
+}
+
+function resumeCooking() {
+  if (savedProgress.value) {
+    restoreProgress(savedProgress.value)
+  }
+}
+
+function formatLastUpdated(dateStr) {
+  const now = new Date()
+  const last = new Date(dateStr)
+  const diffMs = now - last
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return '刚刚'
+  if (diffMins < 60) return `${diffMins}分钟前`
+  if (diffHours < 24) return `${diffHours}小时前`
+  if (diffDays < 7) return `${diffDays}天前`
+  return last.toLocaleDateString('zh-CN')
+}
+
+onMounted(() => {
+  checkSavedProgress()
 })
 
 onUnmounted(() => {
@@ -792,6 +889,86 @@ onUnmounted(() => {
 .not-found {
   padding: 80px 0;
   color: #333;
+}
+
+.resume-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 24px;
+}
+
+.resume-content {
+  background: linear-gradient(135deg, #2a2a4a 0%, #1e3a5f 100%);
+  border-radius: 24px;
+  padding: 48px 32px;
+  text-align: center;
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.resume-icon {
+  font-size: 72px;
+  margin-bottom: 8px;
+}
+
+.resume-content h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+}
+
+.resume-desc {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.resume-desc strong {
+  color: #FF6B35;
+  font-size: 22px;
+}
+
+.resume-time {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+.resume-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.resume-actions .el-button {
+  flex: 1;
+  height: 56px;
+  font-size: 18px;
+  border-radius: 28px;
 }
 
 @media (max-width: 600px) {

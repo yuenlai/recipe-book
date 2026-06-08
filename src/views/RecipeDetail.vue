@@ -70,7 +70,7 @@
       </div>
 
       <IngredientList :ingredients="recipe.ingredients" :scale-ratio="scaleRatio" :original-servings="recipe.servings" :current-servings="currentServings" />
-      <StepList :steps="recipe.steps" />
+      <StepList :steps="recipe.steps" :recipe-id="recipe.id" />
 
       <div class="detail-extra-actions">
         <div class="compare-info-section" v-if="compareCount > 0">
@@ -149,14 +149,26 @@
       </div>
 
       <div class="timer-action">
-        <el-button type="success" size="large" @click="enterCookingMode">
-          <el-icon><VideoPlay /></el-icon>
-          进入做菜流程模式
-        </el-button>
-        <el-button type="primary" size="large" @click="startCookTimer" style="margin-left: 12px;">
-          <el-icon><Timer /></el-icon>
-          开始烹饪计时 ({{ recipe.cookTime }}分钟)
-        </el-button>
+        <template v-if="hasCookingProgress">
+          <el-button type="warning" size="large" @click="resumeCookingMode">
+            <el-icon><Refresh /></el-icon>
+            继续烹饪 · 第 {{ currentProgressStep + 1 }} 步
+          </el-button>
+          <el-button type="info" size="large" @click="restartCooking" style="margin-left: 12px;">
+            <el-icon><RefreshRight /></el-icon>
+            重新开始
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button type="success" size="large" @click="enterCookingMode">
+            <el-icon><VideoPlay /></el-icon>
+            进入做菜流程模式
+          </el-button>
+          <el-button type="primary" size="large" @click="startCookTimer" style="margin-left: 12px;">
+            <el-icon><Timer /></el-icon>
+            开始烹饪计时 ({{ recipe.cookTime }}分钟)
+          </el-button>
+        </template>
       </div>
     </div>
   </div>
@@ -176,7 +188,7 @@ import { useRecipeStore } from '../stores/recipe'
 import FavoriteButton from '../components/FavoriteButton.vue'
 import IngredientList from '../components/IngredientList.vue'
 import StepList from '../components/StepList.vue'
-import { DataLine, Check, Plus, Close, Minus } from '@element-plus/icons-vue'
+import { DataLine, Check, Plus, Close, Minus, Refresh, RefreshRight } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -238,6 +250,28 @@ function enterCookingMode() {
   if (!recipe.value) return
   router.push(`/recipe/${recipe.value.id}/cooking`)
 }
+
+function resumeCookingMode() {
+  if (!recipe.value) return
+  router.push(`/recipe/${recipe.value.id}/cooking`)
+}
+
+function restartCooking() {
+  if (!recipe.value) return
+  store.clearCookingProgress(recipe.value.id)
+  router.push(`/recipe/${recipe.value.id}/cooking`)
+}
+
+const hasCookingProgress = computed(() => {
+  if (!recipe.value) return false
+  return store.hasCookingProgress(recipe.value.id)
+})
+
+const currentProgressStep = computed(() => {
+  if (!recipe.value) return -1
+  const progress = store.getCookingProgress(recipe.value.id)
+  return progress?.currentStepIndex ?? -1
+})
 
 const compareCount = computed(() => store.compareCount)
 const compareRecipeObjects = computed(() => store.compareRecipeObjects)
